@@ -1,0 +1,6 @@
+# Default ignored files
+/shelf/
+/workspace.xml
+# Core Dev Booster ignored files
+/coreModuleDependants.csv
+/compile.flag

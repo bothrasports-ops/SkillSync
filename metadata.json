@@ -1,0 +1,7 @@
+{
+  "name": "SkillSync - Timebanking & Skill Sharing",
+  "description": "A PWA for sharing skills and helping others using a time-credit system. Features geolocation matching, AI-powered recommendations, and an invitation-only community.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}

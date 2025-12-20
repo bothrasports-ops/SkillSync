@@ -1,0 +1,19 @@
+
+{
+  "name": "skillsync-pwa",
+  "version": "1.0.0",
+  "description": "A Skill Sharing and Helping PWA with Gemini AI matching.",
+  "main": "index.tsx",
+  "scripts": {
+    "start": "npx serve .",
+    "build": "echo 'No build step required for ESM-based app'"
+  },
+  "keywords": [
+    "pwa",
+    "react",
+    "gemini-ai",
+    "skill-sharing"
+  ],
+  "author": "",
+  "license": "MIT"
+}
