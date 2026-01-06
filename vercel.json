@@ -4,7 +4,7 @@
   "outputDirectory": ".",
   "rewrites": [
     {
-      "source": "/(.*)",
+      "source": "/((?!.*\\.(?:tsx|ts|js|css|json|png|jpg|jpeg|svg|webp|gif|ico|woff|woff2|ttf|otf|map|sw\\.js|manifest\\.json)$).* )",
       "destination": "/index.html"
     }
   ]
