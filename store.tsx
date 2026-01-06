@@ -2,285 +2,290 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Session, Invitation, UserRole, Skill } from './types';
 import { generateId, generateInviteCode } from './utils';
-
-// Keys for localStorage
-const STORAGE_KEYS = {
-  USERS: 'skillsync_users',
-  SESSIONS: 'skillsync_sessions',
-  INVITATIONS: 'skillsync_invitations',
-  CURRENT_USER: 'skillsync_current_user'
-};
-
-// Mock Data (Initial State if storage is empty)
-const MOCK_SKILLS: Skill[] = [
-  { id: 's1', name: 'Plumbing', description: 'Can fix leaky faucets and basic pipe issues', category: 'Household' },
-  { id: 's2', name: 'React Tutoring', description: 'Senior dev teaching basics to advanced React', category: 'Education' },
-  { id: 's3', name: 'Gardening', description: 'Help with weeding and planting', category: 'Household' },
-  { id: 's4', name: 'Guitar Lessons', description: 'Acoustic guitar basics', category: 'Arts' },
-];
-
-const INITIAL_USERS: User[] = [
-  {
-    id: 'admin1',
-    name: 'Admin Alice',
-    email: 'alice@skillsync.com',
-    avatar: 'https://picsum.photos/seed/alice/200/200',
-    role: UserRole.ADMIN,
-    credits: 40,
-    skills: [MOCK_SKILLS[1]],
-    location: { lat: 40.7128, lng: -74.0060, address: 'New York, NY' },
-    rating: 5.0,
-    reviewsCount: 10,
-    joinedDate: '2023-01-01'
-  },
-  {
-    id: 'user1',
-    name: 'Bob Builder',
-    email: 'bob@example.com',
-    avatar: 'https://picsum.photos/seed/bob/200/200',
-    role: UserRole.USER,
-    credits: 40,
-    skills: [MOCK_SKILLS[0], MOCK_SKILLS[2]],
-    location: { lat: 40.7328, lng: -74.0260, address: 'Hoboken, NJ' },
-    rating: 4.8,
-    reviewsCount: 5,
-    joinedDate: '2023-02-15'
-  }
-];
-
-const INITIAL_INVITES: Invitation[] = [
-  { code: 'WELCOME2024', email: 'guest@example.com', used: false, createdBy: 'admin1' }
-];
+import { supabase, testConnection, isSupabaseConfigured } from './supabase';
 
 interface AppState {
   currentUser: User | null;
   users: User[];
   sessions: Session[];
   invitations: Invitation[];
-  login: (email: string) => void;
+  isLoading: boolean;
+  dbStatus: 'connecting' | 'connected' | 'error';
+  dbErrorMessage: string | null;
+  login: (email: string) => Promise<boolean>;
   logout: () => void;
-  register: (name: string, email: string, inviteCode: string) => boolean;
-  createInvitation: (email: string) => string;
-  requestSession: (providerId: string, skillId: string, duration: number) => void;
-  acceptSession: (sessionId: string) => void;
-  cancelSession: (sessionId: string) => void;
-  completeSession: (sessionId: string, rating: number, review: string) => void;
-  updateUserLocation: (lat: number, lng: number) => void;
-  addSkill: (name: string, description: string, category: string) => void;
-  updateUserProfile: (name: string, address: string) => void;
+  register: (name: string, email: string, inviteCode: string) => Promise<{success: boolean, message?: string}>;
+  createInvitation: (email: string) => Promise<string | null>;
+  requestSession: (providerId: string, skillId: string, duration: number) => Promise<void>;
+  acceptSession: (sessionId: string) => Promise<void>;
+  cancelSession: (sessionId: string) => Promise<void>;
+  completeSession: (sessionId: string, rating: number, review: string) => Promise<void>;
+  updateUserLocation: (lat: number, lng: number) => Promise<void>;
+  addSkill: (name: string, description: string, category: string) => Promise<void>;
+  updateUserProfile: (name: string, address: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppState | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  // Initialize state from localStorage if available
-  const [currentUser, setCurrentUser] = useState<User | null>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-    return saved ? JSON.parse(saved) : null;
-  });
-
-  const [users, setUsers] = useState<User[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.USERS);
-    return saved ? JSON.parse(saved) : INITIAL_USERS;
-  });
-
-  const [sessions, setSessions] = useState<Session[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.SESSIONS);
-    return saved ? JSON.parse(saved) : [];
-  });
-
-  const [invitations, setInvitations] = useState<Invitation[]>(() => {
-    const saved = localStorage.getItem(STORAGE_KEYS.INVITATIONS);
-    return saved ? JSON.parse(saved) : INITIAL_INVITES;
-  });
-
-  // Sync with localStorage on every change
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.USERS, JSON.stringify(users));
-  }, [users]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [users, setUsers] = useState<User[]>([]);
+  const [sessions, setSessions] = useState<Session[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [dbStatus, setDbStatus] = useState<'connecting' | 'connected' | 'error'>('connecting');
+  const [dbErrorMessage, setDbErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.SESSIONS, JSON.stringify(sessions));
-  }, [sessions]);
-
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEYS.INVITATIONS, JSON.stringify(invitations));
-  }, [invitations]);
-
-  useEffect(() => {
-    if (currentUser) {
-      localStorage.setItem(STORAGE_KEYS.CURRENT_USER, JSON.stringify(currentUser));
-    } else {
-      localStorage.removeItem(STORAGE_KEYS.CURRENT_USER);
-    }
-  }, [currentUser]);
-
-  const login = (email: string) => {
-    const user = users.find(u => u.email === email);
-    if (user) setCurrentUser(user);
-  };
-
-  const logout = () => setCurrentUser(null);
-
-  const register = (name: string, email: string, inviteCode: string): boolean => {
-    const invite = invitations.find(i => i.code === inviteCode && !i.used);
-    if (!invite) return false;
-
-    const newUser: User = {
-      id: generateId(),
-      name,
-      email,
-      avatar: `https://picsum.photos/seed/${name}/200/200`,
-      role: UserRole.USER,
-      credits: 40,
-      skills: [],
-      location: { lat: 40.7128, lng: -74.0060 },
-      rating: 0,
-      reviewsCount: 0,
-      joinedDate: new Date().toISOString()
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    setInvitations(prev => prev.map(i => i.code === inviteCode ? { ...i, used: true } : i));
-    setCurrentUser(newUser);
-    return true;
-  };
-
-  const createInvitation = (email: string) => {
-    const code = generateInviteCode();
-    const newInvite = { code, email, used: false, createdBy: currentUser?.id || 'admin' };
-    setInvitations(prev => [...prev, newInvite]);
-    return code;
-  };
-
-  const requestSession = (providerId: string, skillId: string, duration: number) => {
-    if (!currentUser) return;
-
-    if (currentUser.credits < duration) {
-        alert("Not enough credits!");
-        return;
-    }
-
-    const newSession: Session = {
-      id: generateId(),
-      providerId,
-      consumerId: currentUser.id,
-      skillId,
-      status: 'PENDING',
-      durationHours: duration,
-      createdAt: new Date().toISOString()
-    };
-
-    // Update global users list
-    setUsers(prev => prev.map(u =>
-        u.id === currentUser.id ? { ...u, credits: u.credits - duration } : u
-    ));
-    // Update local session user
-    setCurrentUser(prev => prev ? { ...prev, credits: prev.credits - duration } : null);
-    setSessions(prev => [...prev, newSession]);
-  };
-
-  const acceptSession = (sessionId: string) => {
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId ? { ...s, status: 'ACCEPTED' } : s
-    ));
-  };
-
-  const cancelSession = (sessionId: string) => {
-    const session = sessions.find(s => s.id === sessionId);
-    if (!session || session.status === 'COMPLETED' || session.status === 'CANCELLED') return;
-
-    setUsers(prev => prev.map(u => {
-      if (u.id === session.consumerId) {
-        return { ...u, credits: u.credits + session.durationHours };
+    const init = async () => {
+      // 1. Check Connection First
+      const connection = await testConnection();
+      if (connection.success) {
+        setDbStatus('connected');
+        setDbErrorMessage(null);
+      } else {
+        setDbStatus('error');
+        setDbErrorMessage(connection.message || 'Unknown database error');
+        console.warn("Database initialization failed:", connection.message);
       }
-      return u;
-    }));
 
-    if (currentUser?.id === session.consumerId) {
-      setCurrentUser(prev => prev ? { ...prev, credits: prev.credits + session.durationHours } : null);
+      try {
+        if (connection.success) {
+            const storedUser = localStorage.getItem('skillsync_user_session');
+            if (storedUser) {
+              const parsed = JSON.parse(storedUser);
+              const success = await login(parsed.email);
+              if (!success) {
+                localStorage.removeItem('skillsync_user_session');
+              }
+            }
+            await refreshData();
+        }
+      } catch (e) {
+        console.error("Initial load failed", e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    init();
+  }, []);
+
+  const refreshData = async () => {
+    if (!isSupabaseConfigured() || !supabase) return;
+
+    try {
+        const { data: userData } = await supabase.from('users').select('*');
+        const { data: sessionData } = await supabase.from('sessions').select('*');
+        const { data: inviteData } = await supabase.from('invitations').select('*');
+        const { data: skillData } = await supabase.from('skills').select('*');
+
+        if (userData) {
+          const usersWithSkills = userData.map(u => ({
+            ...u,
+            skills: skillData?.filter(s => s.user_id === u.id) || []
+          }));
+          setUsers(usersWithSkills as User[]);
+
+          if (currentUser) {
+            const updatedMe = usersWithSkills.find(u => u.id === currentUser.id);
+            if (updatedMe) setCurrentUser(updatedMe as User);
+          }
+        }
+        if (sessionData) setSessions(sessionData as Session[]);
+        if (inviteData) setInvitations(inviteData as Invitation[]);
+    } catch (e) {
+        console.error("Refresh data failed", e);
     }
-
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId ? { ...s, status: 'CANCELLED' } : s
-    ));
   };
 
-  const completeSession = (sessionId: string, rating: number, review: string) => {
+  const login = async (email: string): Promise<boolean> => {
+    if (!supabase) return false;
+    setIsLoading(true);
+    try {
+        const { data, error } = await supabase
+          .from('users')
+          .select('*, skills(*)')
+          .eq('email', email.toLowerCase().trim())
+          .single();
+
+        if (data && !error) {
+          setCurrentUser(data as User);
+          localStorage.setItem('skillsync_user_session', JSON.stringify({ email: data.email }));
+          await refreshData();
+          return true;
+        }
+    } catch (e) {
+        console.error("Login attempt failed", e);
+    } finally {
+        setIsLoading(false);
+    }
+    return false;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    localStorage.removeItem('skillsync_user_session');
+  };
+
+  const register = async (name: string, email: string, inviteCode: string): Promise<{success: boolean, message?: string}> => {
+    if (!supabase) return { success: false, message: "Database not available." };
+    setIsLoading(true);
+
+    try {
+      // 1. Validate Invitation
+      const { data: invite, error: inviteErr } = await supabase
+        .from('invitations')
+        .select('*')
+        .eq('code', inviteCode.trim().toUpperCase())
+        .eq('used', false)
+        .single();
+
+      if (inviteErr) {
+        console.error("Invitation check error:", inviteErr);
+        setIsLoading(false);
+        return { success: false, message: `Could not verify code: ${inviteErr.message}` };
+      }
+
+      if (!invite) {
+        setIsLoading(false);
+        return { success: false, message: "Invitation code not found or already used." };
+      }
+
+      // 2. Create User (Database uses snake_case)
+      const newUser = {
+        id: generateId(),
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        avatar: `https://picsum.photos/seed/${encodeURIComponent(name)}/200/200`,
+        role: UserRole.USER,
+        credits: 40,
+        location: { lat: 40.7128, lng: -74.0060, address: "Community Center" },
+        rating: 5.0,
+        reviews_count: 0,
+        joined_date: new Date().toISOString()
+      };
+
+      const { error: userError } = await supabase.from('users').insert([newUser]);
+      if (userError) {
+        console.error("User creation error:", userError);
+        setIsLoading(false);
+        return { success: false, message: `Registration failed: ${userError.message}` };
+      }
+
+      // 3. Mark Invite Used
+      await supabase.from('invitations').update({ used: true }).eq('code', inviteCode.toUpperCase());
+
+      const loggedIn = await login(email);
+      return { success: loggedIn };
+    } catch (e: any) {
+      console.error("Registration critical failure:", e);
+      setIsLoading(false);
+      return { success: false, message: e.message || "An unexpected error occurred." };
+    }
+  };
+
+  const createInvitation = async (email: string) => {
+    if (!currentUser || !supabase) return null;
+    const code = generateInviteCode();
+    const newInvite = { code, email: email.toLowerCase(), used: false, created_by: currentUser.id };
+    const { error } = await supabase.from('invitations').insert([newInvite]);
+    if (!error) {
+      await refreshData();
+      return code;
+    }
+    return null;
+  };
+
+  const requestSession = async (providerId: string, skillId: string, duration: number) => {
+    if (!currentUser || !supabase || currentUser.credits < duration) return;
+
+    const newSession = {
+      id: generateId(),
+      provider_id: providerId,
+      consumer_id: currentUser.id,
+      skill_id: skillId,
+      status: 'PENDING',
+      duration_hours: duration,
+      created_at: new Date().toISOString()
+    };
+
+    const { error } = await supabase.from('sessions').insert([newSession]);
+    if (!error) {
+      await supabase.from('users').update({ credits: currentUser.credits - duration }).eq('id', currentUser.id);
+      await refreshData();
+    }
+  };
+
+  const acceptSession = async (sessionId: string) => {
+    if (!supabase) return;
+    await supabase.from('sessions').update({ status: 'ACCEPTED' }).eq('id', sessionId);
+    await refreshData();
+  };
+
+  const cancelSession = async (sessionId: string) => {
+    if (!supabase) return;
     const session = sessions.find(s => s.id === sessionId);
     if (!session) return;
 
-    const bonus = rating >= 4.5 ? session.durationHours * 0.5 : 0;
-    const totalEarned = session.durationHours + bonus;
+    await supabase.from('sessions').update({ status: 'CANCELLED' }).eq('id', sessionId);
 
-    setSessions(prev => prev.map(s =>
-      s.id === sessionId ? { ...s, status: 'COMPLETED', rating, review, completedAt: new Date().toISOString() } : s
-    ));
-
-    setUsers(prev => prev.map(u => {
-      if (u.id === session.providerId) {
-        const newReviewCount = u.reviewsCount + 1;
-        const newRating = ((u.rating * u.reviewsCount) + rating) / newReviewCount;
-        return {
-          ...u,
-          credits: u.credits + totalEarned,
-          rating: Number(newRating.toFixed(1)),
-          reviewsCount: newReviewCount
-        };
-      }
-      return u;
-    }));
-
-    if (currentUser?.id === session.providerId) {
-      setCurrentUser(prev => {
-        if (!prev) return null;
-        const newReviewCount = prev.reviewsCount + 1;
-        const newRating = ((prev.rating * prev.reviewsCount) + rating) / newReviewCount;
-        return {
-          ...prev,
-          credits: prev.credits + totalEarned,
-          rating: Number(newRating.toFixed(1)),
-          reviewsCount: newReviewCount
-        };
-      });
+    const { data: consumer } = await supabase.from('users').select('credits').eq('id', session.consumer_id).single();
+    if (consumer) {
+      await supabase.from('users').update({ credits: consumer.credits + session.duration_hours }).eq('id', session.consumer_id);
     }
+    await refreshData();
   };
 
-  const updateUserLocation = (lat: number, lng: number) => {
-    if (currentUser) {
-        const updated = { ...currentUser, location: { ...currentUser.location, lat, lng } };
-        setCurrentUser(updated);
-        setUsers(prev => prev.map(u => u.id === currentUser.id ? updated : u));
+  const completeSession = async (sessionId: string, rating: number, review: string) => {
+    if (!supabase) return;
+    const session = sessions.find(s => s.id === sessionId);
+    if (!session) return;
+
+    await supabase.from('sessions').update({
+      status: 'COMPLETED',
+      rating,
+      review,
+      completed_at: new Date().toISOString()
+    }).eq('id', sessionId);
+
+    const { data: provider } = await supabase.from('users').select('*').eq('id', session.provider_id).single();
+    if (provider) {
+      const bonus = rating >= 4.5 ? session.duration_hours * 0.5 : 0;
+      const totalEarned = session.duration_hours + bonus;
+      const newReviewCount = provider.reviews_count + 1;
+      const newRating = ((provider.rating * provider.reviews_count) + rating) / newReviewCount;
+
+      await supabase.from('users').update({
+        credits: provider.credits + totalEarned,
+        rating: Number(newRating.toFixed(1)),
+        reviews_count: newReviewCount
+      }).eq('id', session.provider_id);
     }
+    await refreshData();
   };
 
-  const addSkill = (name: string, description: string, category: string) => {
-    if (!currentUser) return;
-    const newSkill: Skill = {
-        id: generateId(),
-        name,
-        description,
-        category
-    };
-    const updatedUser = { ...currentUser, skills: [...currentUser.skills, newSkill] };
-    setCurrentUser(updatedUser);
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+  const updateUserLocation = async (lat: number, lng: number) => {
+    if (!currentUser || !supabase) return;
+    await supabase.from('users').update({ location: { ...currentUser.location, lat, lng } }).eq('id', currentUser.id);
+    await refreshData();
   };
 
-  const updateUserProfile = (name: string, address: string) => {
-    if (!currentUser) return;
-    const updatedUser = {
-        ...currentUser,
-        name,
-        location: { ...currentUser.location, address }
-    };
-    setCurrentUser(updatedUser);
-    setUsers(prev => prev.map(u => u.id === currentUser.id ? updatedUser : u));
+  const addSkill = async (name: string, description: string, category: string) => {
+    if (!currentUser || !supabase) return;
+    const newSkill = { user_id: currentUser.id, name, description, category };
+    await supabase.from('skills').insert([newSkill]);
+    await refreshData();
+  };
+
+  const updateUserProfile = async (name: string, address: string) => {
+    if (!currentUser || !supabase) return;
+    await supabase.from('users').update({ name, location: { ...currentUser.location, address } }).eq('id', currentUser.id);
+    await refreshData();
   };
 
   return (
     <AppContext.Provider value={{
-      currentUser, users, sessions, invitations,
+      currentUser, users, sessions, invitations, isLoading, dbStatus, dbErrorMessage,
       login, logout, register, createInvitation, requestSession, acceptSession, cancelSession, completeSession, updateUserLocation, addSkill, updateUserProfile
     }}>
       {children}

@@ -10,7 +10,7 @@ export const Admin: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'invites' | 'brand'>('invites');
 
   // Filter so users only see invitations they created
-  const myInvitations = invitations.filter(i => i.createdBy === currentUser?.id);
+  const myInvitations = invitations.filter(i => i.created_by === currentUser?.id);
 
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -93,7 +93,6 @@ export const Admin: React.FC = () => {
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
                 <h3 className="font-semibold text-gray-700">Recent Invitations</h3>
-                <span className="text-[10px] bg-indigo-100 text-indigo-700 px-2 py-1 rounded font-bold uppercase">Stored Locally</span>
             </div>
             <div className="divide-y divide-gray-100">
               {myInvitations.map((invite, idx) => (
@@ -130,17 +129,9 @@ export const Admin: React.FC = () => {
               {myInvitations.length === 0 && (
                 <div className="p-12 text-center text-gray-400">
                     <p className="italic">You haven't invited anyone yet.</p>
-                    <p className="text-xs mt-1">Generate a code to start inviting!</p>
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl">
-             <h4 className="text-sm font-bold text-blue-800 mb-1">Developer Note</h4>
-             <p className="text-xs text-blue-600 leading-relaxed">
-                Invitations are currently saved in your browser's <strong>Local Storage</strong>. To allow users on different devices to see the same data and send automatic emails, you would need to integrate a backend like Supabase or Firebase.
-             </p>
           </div>
         </div>
       ) : (
@@ -154,15 +145,10 @@ export const Admin: React.FC = () => {
             </div>
 
             <p className="text-sm text-gray-500 mb-6">
-              This is how your SkillSync app appears on users' devices when they use the "Add to Home Screen" feature.
+              This is how your SkillSync app appears on users' devices.
             </p>
 
             <div className="flex justify-center py-8 bg-slate-900 rounded-2xl relative overflow-hidden group">
-              <div className="absolute inset-0 opacity-20 pointer-events-none">
-                 <div className="absolute top-10 left-10 w-24 h-24 bg-blue-500 rounded-full blur-3xl"></div>
-                 <div className="absolute bottom-10 right-10 w-32 h-32 bg-purple-500 rounded-full blur-3xl"></div>
-              </div>
-
               <div className="relative flex flex-col items-center">
                 <div className="w-20 h-20 bg-indigo-600 rounded-2xl shadow-2xl flex items-center justify-center p-3 transform group-hover:scale-110 transition-transform duration-500">
                   <img
@@ -172,50 +158,6 @@ export const Admin: React.FC = () => {
                   />
                 </div>
                 <span className="mt-3 text-white text-xs font-semibold tracking-wide">SkillSync</span>
-              </div>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-4">
-               <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Theme Color</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded bg-[#4f46e5]"></div>
-                    <span className="text-xs font-mono text-gray-600">#4f46e5</span>
-                  </div>
-               </div>
-               <div className="p-3 bg-gray-50 rounded-lg">
-                  <p className="text-[10px] text-gray-400 font-bold uppercase mb-1">Background</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-4 h-4 rounded border border-gray-300 bg-white"></div>
-                    <span className="text-xs font-mono text-gray-600">#FFFFFF</span>
-                  </div>
-               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <h3 className="text-lg font-bold text-gray-900 mb-4">Branding Guidelines</h3>
-            <div className="space-y-4">
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">1</div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-800">Dynamic Exchange</h4>
-                  <p className="text-xs text-gray-500 mt-1">The icon represents 'Synchronicity' and 'Exchange,' emphasizing the mutual flow of skills.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">2</div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-800">Clean Typography</h4>
-                  <p className="text-xs text-gray-500 mt-1">We use 'Inter' for a modern, accessible, and professional feel across all devices.</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-3">
-                <div className="w-6 h-6 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center flex-shrink-0 text-xs font-bold">3</div>
-                <div>
-                  <h4 className="text-sm font-bold text-gray-800">Modern Palette</h4>
-                  <p className="text-xs text-gray-500 mt-1">The Indigo-600 primary color provides a high-trust, professional aesthetic.</p>
-                </div>
               </div>
             </div>
           </div>
