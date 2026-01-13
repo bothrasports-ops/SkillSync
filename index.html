@@ -6,7 +6,7 @@
     <title>TimeShare - Peer Skill Hub</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
-    <!-- Tailwind and Icons are loaded via CDN for simplicity in this prototype -->
+    <!-- External Assets -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
@@ -16,7 +16,7 @@
         /* Prevent layout shift before React loads */
         #root:empty { min-height: 100vh; background: #f8fafc; }
     </style>
-    <!-- Shim for process.env to prevent crashes in browser environments during build/runtime -->
+    <!-- Global Shim to prevent 'process is not defined' errors -->
     <script>
         window.process = window.process || { env: {} };
     </script>
@@ -37,7 +37,7 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen">
 <div id="root"></div>
 
-<!-- Entry point for the React application. Vite will bundle everything starting here. -->
+<!-- Vite entry point -->
 <script type="module" src="/index.tsx"></script>
 
 <script>
