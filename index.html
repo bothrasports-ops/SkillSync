@@ -7,31 +7,47 @@
     <title>TimeShare - Peer Skill Hub</title>
     <link rel="manifest" href="manifest.json">
     <meta name="theme-color" content="#4f46e5">
+    <!-- Tailwind and Icons are loaded via CDN for simplicity in this prototype -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body { font-family: 'Inter', sans-serif; margin: 0; padding: 0; }
         .glass { background: rgba(255, 255, 255, 0.8); backdrop-filter: blur(8px); }
+        /* Prevent layout shift before React loads */
+        #root:empty { min-height: 100vh; background: #f8fafc; }
     </style>
+    <!-- Shim for process.env to prevent crashes in browser environments during build/runtime -->
+    <script>
+        window.process = window.process || { env: {} };
+    </script>
     <script type="importmap">
         {
           "imports": {
-            "react/": "https://esm.sh/react@^19.2.3/",
             "react": "https://esm.sh/react@^19.2.3",
-            "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
             "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@2.45.1"
+            "react/": "https://esm.sh/react@^19.2.3/",
+            "@google/genai": "https://esm.sh/@google/genai@^1.35.0",
+            "@supabase/supabase-js": "https://esm.sh/@supabase/supabase-js@^2.90.1",
+            "vite": "https://esm.sh/vite@^7.3.1",
+            "@vitejs/plugin-react": "https://esm.sh/@vitejs/plugin-react@^5.1.2"
           }
         }
     </script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen">
 <div id="root"></div>
+
+<!-- Entry point for the React application. Vite will bundle everything starting here. -->
+<script type="module" src="/index.tsx"></script>
+
 <script>
+    // Service worker for PWA capabilities
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/sw.js');
+        navigator.serviceWorker.register('/sw.js').catch(err => {
+          console.warn('Service Worker registration skipped or failed:', err);
+        });
       });
     }
 </script>
