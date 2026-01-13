@@ -1,13 +1,13 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { User, SessionRequest, SessionStatus, Skill, Invitation, Location } from './types';
-import { INITIAL_HOURS } from './constants';
 import { db } from './services/db';
 import Header from './components/Header';
 import Home from './components/Home';
 import Profile from './components/Profile';
 import Sessions from './components/Sessions';
 import Invitations from './components/Invitations';
+import Login from './components/Login';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -51,6 +51,12 @@ const App: React.FC = () => {
     }
   }, [refreshState]);
 
+  const handleLogin = (user: User) => {
+      localStorage.setItem('ts_currentUser_id', user.id);
+      setCurrentUser(user);
+      refreshState();
+  };
+
   const handleInviteUser = async (emailOrPhone: string) => {
     if (!currentUser) return;
     const newInvite: Invitation = {
@@ -64,7 +70,7 @@ const App: React.FC = () => {
     refreshState();
   };
 
-const handleCancelInvite = async (id: string) => {
+  const handleCancelInvite = async (id: string) => {
     setBackgroundLoading(true);
     try {
       await db.cancelInvite(id);
@@ -136,66 +142,23 @@ const handleCancelInvite = async (id: string) => {
       setCurrentUser(null);
   };
 
-  const handleLoginDemo = async () => {
-      setLoading(true);
-      const mockEmail = `user_${Date.now()}@example.com`;
-      try {
-        const { data, error } = await db.supabase.from('profiles').insert({
-            name: 'New Member',
-            email: mockEmail,
-            bio: 'I am here to learn and contribute.',
-            balance_hours: INITIAL_HOURS,
-            avatar: `https://picsum.photos/seed/${Date.now()}/200`,
-            location_lat: userLocation?.lat,
-            location_lng: userLocation?.lng
-        }).select().single();
-
-        if (error) throw error;
-
-        localStorage.setItem('ts_currentUser_id', data.id);
-        await refreshState();
-      } catch (e) {
-        alert("Connection timed out. Please verify your Supabase settings.");
-      } finally {
-        setLoading(false);
-      }
-  };
-
-  if (loading && !currentUser) {
+  if (loading) {
       return (
           <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
               <div className="relative">
                   <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
                   <i className="fa-solid fa-bolt absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600 text-[10px]"></i>
               </div>
-              <p className="mt-4 font-bold text-slate-400 uppercase tracking-widest text-[10px]">Syncing Community Data...</p>
+              <p className="mt-4 font-bold text-slate-400 uppercase tracking-widest text-[10px]">Accessing Community Hub...</p>
           </div>
       );
   }
 
-  const renderView = () => {
-    if (!currentUser) return (
-        <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
-            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-slate-100">
-                <div className="w-20 h-20 bg-indigo-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-200">
-                    <i className="fa-solid fa-bolt-lightning text-4xl"></i>
-                </div>
-                <h1 className="text-4xl font-black mb-3 tracking-tight">TimeShare</h1>
-                <p className="text-slate-500 mb-10 leading-relaxed">Exchange professional skills using your hour credits. A community where time is the only value.</p>
-                <div className="space-y-4">
-                    <button
-                        onClick={handleLoginDemo}
-                        disabled={loading}
-                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg disabled:opacity-50"
-                    >
-                        {loading ? 'Creating Account...' : 'Join the Community'}
-                    </button>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global P2P Network</p>
-                </div>
-            </div>
-        </div>
-    );
+  if (!currentUser) {
+      return <Login onLogin={handleLogin} />;
+  }
 
+  const renderView = () => {
     switch (currentView) {
       case 'home':
         return <Home users={users} currentUser={currentUser} onRequestSession={handleRequestSession} userLocation={userLocation} />;
@@ -204,7 +167,7 @@ const handleCancelInvite = async (id: string) => {
       case 'sessions':
         return <Sessions sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
       case 'invitations':
-        return <Invitations invitations={invitations} onInvite={handleInviteUser} isAdmin={currentUser.isAdmin} currentUser={currentUser} />;
+        return <Invitations invitations={invitations} onInvite={handleInviteUser} onCancel={handleCancelInvite} isAdmin={currentUser.isAdmin} currentUser={currentUser} />;
     }
   };
 
