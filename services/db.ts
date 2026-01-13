@@ -183,5 +183,9 @@ export const db = {
       timestamp: invitation.timestamp,
       status: invitation.status
     });
+  },
+ async cancelInvite(id: string): Promise<void> {
+    const { error } = await supabase.from('invitations').update({ status: 'cancelled' }).eq('id', id);
+    if (error) throw error;
   }
 };

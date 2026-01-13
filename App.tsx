@@ -64,6 +64,18 @@ const App: React.FC = () => {
     refreshState();
   };
 
+const handleCancelInvite = async (id: string) => {
+    setBackgroundLoading(true);
+    try {
+      await db.cancelInvite(id);
+      await refreshState();
+    } catch (e) {
+      alert("Failed to cancel invitation.");
+    } finally {
+      setBackgroundLoading(false);
+    }
+  };
+
   const handleRequestSession = async (providerId: string, skill: Skill, duration: number) => {
     if (!currentUser) return;
     if (currentUser.balanceHours < duration) {

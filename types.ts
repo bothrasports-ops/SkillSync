@@ -53,7 +53,7 @@ export interface Invitation {
   emailOrPhone: string;
   invitedBy: string;
   timestamp: number;
-  status: 'pending' | 'accepted';
+  status: 'pending' | 'accepted' | 'cancelled';
 }
 
 export interface AppState {

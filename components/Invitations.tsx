@@ -6,11 +6,12 @@ import { generateInviteEmail } from '../services/geminiService';
 interface InvitationsProps {
   invitations: Invitation[];
   onInvite: (emailOrPhone: string) => void;
+  onCancel: (id: string) => void;
   isAdmin: boolean;
   currentUser: User;
 }
 
-const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, isAdmin, currentUser }) => {
+const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCancel, isAdmin, currentUser }) => {
   const [target, setTarget] = useState('');
   const [isDrafting, setIsDrafting] = useState(false);
   const [showDraft, setShowDraft] = useState<{ contact: string, subject: string, message: string } | null>(null);
@@ -66,6 +67,10 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, isAdmi
     } else {
         copyToClipboard();
     }
+  };
+// Only allow canceling if the current user is the inviter or an admin, and it's pending
+  const canCancel = (inv: Invitation) => {
+    return (inv.invitedBy === currentUser.id || currentUser.isAdmin) && inv.status === 'pending';
   };
 
   return (
@@ -130,11 +135,25 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, isAdmi
                             </div>
                         </div>
                     </div>
-                    <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${inv.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' : 'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                        {inv.status}
-                    </span>
-                </div>
-            )) : (
+                  <div className="flex items-center gap-3">
+                      {canCancel(inv) && (
+                          <button
+                              onClick={() => onCancel(inv.id)}
+                              title="Cancel Invitation"
+                              className="text-slate-300 hover:text-red-500 transition-colors p-2"
+                          >
+                              <i className="fa-solid fa-trash-can"></i>
+                          </button>
+                      )}
+                      <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
+                          inv.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                          inv.status === 'cancelled' ? 'bg-slate-50 text-slate-400 border border-slate-100 line-through' :
+                          'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                          {inv.status}
+                      </span>
+                  </div>
+              </div>
+          )) : (
                 <div className="text-center py-16 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fa-solid fa-ghost text-slate-200 text-3xl"></i>
