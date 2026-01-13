@@ -1,25 +1,18 @@
 
 {
-  "name": "SkillSync - Community Time-Banking",
-  "short_name": "SkillSync",
-  "description": "Share skills and help others using a time-credit system.",
-  "start_url": "./",
+  "name": "TimeShare",
+  "short_name": "TimeShare",
+  "description": "Peer-to-peer skill sharing hub using time credits.",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#4f46e5",
   "theme_color": "#4f46e5",
-  "orientation": "portrait",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/1162/1162456.png",
-      "type": "image/png",
-      "sizes": "192x192",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "https://cdn-icons-png.flaticon.com/512/1162/1162456.png",
-      "type": "image/png",
+      "src": "https://cdn-icons-png.flaticon.com/512/3067/3067451.png",
       "sizes": "512x512",
-      "purpose": "any"
+      "type": "image/png",
+      "purpose": "any maskable"
     }
   ]
 }

@@ -1,180 +1,244 @@
-import React, { useState } from 'react';
-import { AppProvider, useApp } from './store';
-import { Auth } from './views/Auth';
-import { Layout } from './components/Layout';
-import { Home } from './views/Home';
-import { Profile } from './views/Profile';
-import { Admin } from './views/Admin';
-import { Sessions } from './views/Sessions';
-import { User, Skill } from './types';
-import { X, Clock, Star, MapPin, Calendar, MessageSquare } from 'lucide-react';
-import { UserReviews } from './components/UserReviews';
 
-const AppContent: React.FC = () => {
-  const { currentUser, requestSession, sessions, users } = useApp();
-  const [activeTab, setActiveTab] = useState('home');
-  const [connectModal, setConnectModal] = useState<{ user: User, skill: Skill } | null>(null);
-  const [profileModal, setProfileModal] = useState<User | null>(null);
-  const [duration, setDuration] = useState(1);
+import React, { useState, useEffect, useCallback } from 'react';
+import { User, SessionRequest, SessionStatus, Skill, Invitation, Location } from './types';
+import { INITIAL_HOURS } from './constants';
+import { db } from './services/db';
+import Header from './components/Header';
+import Home from './components/Home';
+import Profile from './components/Profile';
+import Sessions from './components/Sessions';
+import Invitations from './components/Invitations';
 
-  if (!currentUser) {
-    return <Auth />;
-  }
+const App: React.FC = () => {
+  const [loading, setLoading] = useState(true);
+  const [backgroundLoading, setBackgroundLoading] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [sessions, setSessions] = useState<SessionRequest[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'invitations'>('home');
+  const [userLocation, setUserLocation] = useState<Location | null>(null);
 
-  const handleRequest = () => {
-    if (connectModal) {
-        requestSession(connectModal.user.id, connectModal.skill.id, duration);
-        setConnectModal(null);
-        setActiveTab('sessions');
+  const refreshState = useCallback(async (isInitial = false) => {
+    if (!isInitial) setBackgroundLoading(true);
+    try {
+      const state = await db.init();
+      setUsers(state.users);
+      setSessions(state.sessions);
+      setInvitations(state.invitations);
+
+      const savedUserId = localStorage.getItem('ts_currentUser_id');
+      if (savedUserId) {
+        const user = state.users.find(u => u.id === savedUserId);
+        if (user) setCurrentUser(user);
+      }
+    } catch (e) {
+      console.error("Database sync failed", e);
+    } finally {
+      if (isInitial) setLoading(false);
+      setBackgroundLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshState(true);
+
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.warn("Location access denied")
+      );
+    }
+  }, [refreshState]);
+
+  const handleInviteUser = async (emailOrPhone: string) => {
+    if (!currentUser) return;
+    const newInvite: Invitation = {
+      id: Math.random().toString(36).substr(2, 9),
+      emailOrPhone,
+      invitedBy: currentUser.id,
+      timestamp: Date.now(),
+      status: 'pending'
+    };
+    await db.inviteUser(newInvite);
+    refreshState();
+  };
+
+  const handleRequestSession = async (providerId: string, skill: Skill, duration: number) => {
+    if (!currentUser) return;
+    if (currentUser.balanceHours < duration) {
+        alert("Not enough hours in your balance!");
+        return;
+    }
+
+    const newRequest: SessionRequest = {
+      id: Math.random().toString(36).substr(2, 9),
+      requesterId: currentUser.id,
+      providerId,
+      skillId: skill.id,
+      skillName: skill.name,
+      durationHours: duration,
+      status: SessionStatus.PENDING,
+      timestamp: Date.now(),
+    };
+
+    setBackgroundLoading(true);
+    try {
+      await db.createSession(newRequest);
+      await refreshState();
+      alert("Request sent successfully!");
+    } catch (e) {
+      alert("Failed to send request. Check your connection.");
+    } finally {
+      setBackgroundLoading(false);
     }
   };
 
-  const handleConnectFromProfile = (user: User, skill: Skill) => {
-    setConnectModal({ user, skill });
-    setProfileModal(null);
+  const handleUpdateSession = async (sessionId: string, status: SessionStatus, rating?: number, review?: string) => {
+    setBackgroundLoading(true);
+    try {
+      await db.updateSession(sessionId, status, rating, review);
+      await refreshState();
+    } catch (e) {
+      alert("Failed to update session.");
+    } finally {
+      setBackgroundLoading(false);
+    }
+  };
+
+  const handleUpdateProfile = async (updatedData: Partial<User>) => {
+    if (!currentUser) return;
+    setBackgroundLoading(true);
+    try {
+      await db.updateUser(currentUser.id, updatedData);
+      await refreshState();
+    } catch (e) {
+      alert("Failed to save profile.");
+    } finally {
+      setBackgroundLoading(false);
+    }
+  };
+
+  const handleLogout = () => {
+      localStorage.removeItem('ts_currentUser_id');
+      setCurrentUser(null);
+  };
+
+  const handleLoginDemo = async () => {
+      setLoading(true);
+      const mockEmail = `user_${Date.now()}@example.com`;
+      try {
+        const { data, error } = await db.supabase.from('profiles').insert({
+            name: 'New Member',
+            email: mockEmail,
+            bio: 'I am here to learn and contribute.',
+            balance_hours: INITIAL_HOURS,
+            avatar: `https://picsum.photos/seed/${Date.now()}/200`,
+            location_lat: userLocation?.lat,
+            location_lng: userLocation?.lng
+        }).select().single();
+
+        if (error) throw error;
+
+        localStorage.setItem('ts_currentUser_id', data.id);
+        await refreshState();
+      } catch (e) {
+        alert("Connection timed out. Please verify your Supabase settings.");
+      } finally {
+        setLoading(false);
+      }
+  };
+
+  if (loading && !currentUser) {
+      return (
+          <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50">
+              <div className="relative">
+                  <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+                  <i className="fa-solid fa-bolt absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-indigo-600 text-[10px]"></i>
+              </div>
+              <p className="mt-4 font-bold text-slate-400 uppercase tracking-widest text-[10px]">Syncing Community Data...</p>
+          </div>
+      );
+  }
+
+  const renderView = () => {
+    if (!currentUser) return (
+        <div className="flex flex-col items-center justify-center min-h-[80vh] px-4 animate-in fade-in slide-in-from-bottom-4 duration-700">
+            <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl max-w-md w-full text-center border border-slate-100">
+                <div className="w-20 h-20 bg-indigo-600 text-white rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-xl shadow-indigo-200">
+                    <i className="fa-solid fa-bolt-lightning text-4xl"></i>
+                </div>
+                <h1 className="text-4xl font-black mb-3 tracking-tight">TimeShare</h1>
+                <p className="text-slate-500 mb-10 leading-relaxed">Exchange professional skills using your hour credits. A community where time is the only value.</p>
+                <div className="space-y-4">
+                    <button
+                        onClick={handleLoginDemo}
+                        disabled={loading}
+                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all active:scale-95 shadow-lg disabled:opacity-50"
+                    >
+                        {loading ? 'Creating Account...' : 'Join the Community'}
+                    </button>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Global P2P Network</p>
+                </div>
+            </div>
+        </div>
+    );
+
+    switch (currentView) {
+      case 'home':
+        return <Home users={users} currentUser={currentUser} onRequestSession={handleRequestSession} userLocation={userLocation} />;
+      case 'profile':
+        return <Profile user={currentUser} onUpdate={handleUpdateProfile} />;
+      case 'sessions':
+        return <Sessions sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
+      case 'invitations':
+        return <Invitations invitations={invitations} onInvite={handleInviteUser} isAdmin={currentUser.isAdmin} currentUser={currentUser} />;
+    }
   };
 
   return (
-    <Layout activeTab={activeTab} setActiveTab={setActiveTab}>
-      {activeTab === 'home' && (
-        <Home
-            onRequestSession={(user, skill) => setConnectModal({ user, skill })}
-            onViewProfile={(user) => setProfileModal(user)}
-        />
-      )}
-      {activeTab === 'profile' && <Profile />}
-      {activeTab === 'sessions' && <Sessions />}
-      {activeTab === 'invite' && <Admin />}
+    <div className="max-w-screen-xl mx-auto pb-24 md:pb-0">
+      <Header
+        currentUser={currentUser}
+        currentView={currentView}
+        setView={setCurrentView}
+        onLogout={handleLogout}
+      />
 
-      {/* Public Profile Modal */}
-      {profileModal && (
-        <div className="fixed inset-0 bg-black/50 z-[100] flex items-center justify-center p-4">
-            <div className="bg-white w-full max-w-2xl rounded-2xl overflow-hidden shadow-2xl animate-fade-in max-h-[90vh] flex flex-col">
-                <div className="relative h-24 bg-gradient-to-r from-indigo-500 to-purple-500">
-                    <button
-                        onClick={() => setProfileModal(null)}
-                        className="absolute right-4 top-4 bg-white/20 hover:bg-white/40 text-white p-2 rounded-full backdrop-blur-sm transition-colors"
-                    >
-                        <X size={20} />
-                    </button>
-                </div>
-
-                <div className="px-6 pb-6 overflow-y-auto">
-                    <div className="relative -mt-10 mb-6">
-                        <img
-                            src={profileModal.avatar}
-                            alt={profileModal.name}
-                            className="w-20 h-20 rounded-full border-4 border-white shadow-md bg-white object-cover"
-                        />
-                        <div className="mt-2">
-                            <h3 className="text-xl font-bold text-gray-900">{profileModal.name}</h3>
-                            <div className="flex flex-wrap gap-3 mt-1 text-sm text-gray-500">
-                                <div className="flex items-center gap-1">
-                                    <Star size={14} className="text-yellow-500 fill-current" />
-                                    <span className="font-bold text-gray-900">{profileModal.rating.toFixed(1)}</span>
-                                    <span>({profileModal.reviewsCount} reviews)</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <MapPin size={14} />
-                                    <span>{profileModal.location.address || 'Local'}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <Calendar size={14} />
-                                    <span>Member since {new Date(profileModal.joinedDate).getFullYear()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div className="grid md:grid-cols-2 gap-6">
-                        <section>
-                            <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Skills Offered</h4>
-                            <div className="space-y-3">
-                                {profileModal.skills.map(skill => (
-                                    <div key={skill.id} className="p-3 bg-indigo-50 rounded-xl border border-indigo-100 group">
-                                        <div className="flex justify-between items-start mb-1">
-                                            <h5 className="font-bold text-indigo-900">{skill.name}</h5>
-                                            <button
-                                                onClick={() => handleConnectFromProfile(profileModal, skill)}
-                                                className="bg-indigo-600 text-white text-[10px] px-3 py-1 rounded-full font-bold hover:bg-indigo-700 transition-colors"
-                                            >
-                                                Connect
-                                            </button>
-                                        </div>
-                                        <p className="text-xs text-indigo-700 leading-relaxed">{skill.description}</p>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
-
-                        <section>
-                            <div className="flex items-center gap-2 mb-3">
-                                <MessageSquare size={16} className="text-gray-400" />
-                                <h4 className="text-sm font-bold text-gray-400 uppercase tracking-wider">Review History</h4>
-                            </div>
-                            <UserReviews userId={profileModal.id} sessions={sessions} users={users} />
-                        </section>
-                    </div>
-                </div>
-            </div>
-        </div>
+      {backgroundLoading && (
+          <div className="fixed top-[73px] left-0 right-0 z-50">
+              <div className="h-0.5 bg-indigo-50 w-full overflow-hidden">
+                  <div className="h-full bg-indigo-600 animate-[loading_1s_infinite_linear] origin-left w-1/4"></div>
+              </div>
+          </div>
       )}
 
-      {/* Connection Modal */}
-      {connectModal && (
-        <div className="fixed inset-0 bg-black/50 z-[110] flex items-end sm:items-center justify-center p-4">
-            <div className="bg-white w-full max-w-md rounded-2xl p-6 animate-slide-up">
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-bold text-gray-900">Request Help</h3>
-                    <button onClick={() => setConnectModal(null)} className="text-gray-400 hover:text-gray-600">
-                        <X size={24} />
-                    </button>
-                </div>
+      <main className="px-4 py-8">
+        {renderView()}
+      </main>
 
-                <div className="flex items-center gap-4 mb-6">
-                    <img src={connectModal.user.avatar} className="w-14 h-14 rounded-full border border-gray-100" />
-                    <div>
-                        <p className="font-semibold text-gray-900">{connectModal.user.name}</p>
-                        <p className="text-indigo-600 font-medium">{connectModal.skill.name}</p>
-                    </div>
-                </div>
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white flex items-center gap-2 p-2 rounded-3xl shadow-2xl md:hidden z-50 border border-white/10 backdrop-blur-xl bg-opacity-90">
+        <button onClick={() => setCurrentView('home')} className={`p-4 rounded-2xl transition ${currentView === 'home' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
+            <i className="fa-solid fa-compass text-xl"></i>
+        </button>
+        <button onClick={() => setCurrentView('sessions')} className={`p-4 rounded-2xl transition ${currentView === 'sessions' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
+            <i className="fa-solid fa-calendar-days text-xl"></i>
+        </button>
+        <button onClick={() => setCurrentView('invitations')} className={`p-4 rounded-2xl transition ${currentView === 'invitations' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
+            <i className="fa-solid fa-user-plus text-xl"></i>
+        </button>
+        <button onClick={() => setCurrentView('profile')} className={`p-4 rounded-2xl transition ${currentView === 'profile' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
+            <i className="fa-solid fa-user-astronaut text-xl"></i>
+        </button>
+      </nav>
 
-                <div className="mb-8">
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Duration needed (hours)</label>
-                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
-                        <Clock className="text-gray-400" />
-                        <input
-                            type="range"
-                            min="0.5"
-                            max="5"
-                            step="0.5"
-                            value={duration}
-                            onChange={(e) => setDuration(parseFloat(e.target.value))}
-                            className="flex-1 accent-indigo-600"
-                        />
-                        <span className="font-bold text-gray-900 w-12 text-right">{duration}h</span>
-                    </div>
-                    <p className="text-xs text-gray-500 mt-2 text-right">Cost: {duration} credits</p>
-                </div>
-
-                <button
-                    onClick={handleRequest}
-                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold text-lg hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200"
-                >
-                    Confirm Request
-                </button>
-            </div>
-        </div>
-      )}
-    </Layout>
-  );
-};
-
-const App: React.FC = () => {
-  return (
-    <AppProvider>
-      <AppContent />
-    </AppProvider>
+      <style>{`
+        @keyframes loading {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(400%); }
+        }
+      `}</style>
+    </div>
   );
 };
 

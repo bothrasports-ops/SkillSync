@@ -1,49 +1,64 @@
-export enum UserRole {
-  ADMIN = 'ADMIN',
-  USER = 'USER',
+
+export enum SessionStatus {
+  PENDING = 'PENDING',
+  ACCEPTED = 'ACCEPTED',
+  COMPLETED = 'COMPLETED',
+  CANCELLED = 'CANCELLED'
+}
+
+export interface Location {
+  lat: number;
+  lng: number;
+  name?: string;
 }
 
 export interface Skill {
   id: string;
   name: string;
+  category: string;
   description: string;
-  category: string; // e.g., 'Education', 'Household', 'Tech'
 }
 
 export interface User {
   id: string;
   name: string;
   email: string;
-  avatar: string;
-  role: UserRole;
-  credits: number;
+  phone: string;
+  bio: string;
   skills: Skill[];
-  location: {
-    lat: number;
-    lng: number;
-    address?: string;
-  };
+  balanceHours: number;
   rating: number;
-  reviewsCount: number;
-  joinedDate: string;
+  reviewCount: number;
+  location?: Location;
+  isAdmin: boolean;
+  avatar: string;
+  isInvited: boolean;
 }
 
-export interface Session {
+export interface SessionRequest {
   id: string;
+  requesterId: string;
   providerId: string;
-  consumerId: string;
   skillId: string;
-  status: 'PENDING' | 'ACCEPTED' | 'COMPLETED' | 'CANCELLED';
+  skillName: string;
   durationHours: number;
-  createdAt: string;
-  completedAt?: string;
+  status: SessionStatus;
+  timestamp: number;
   rating?: number;
   review?: string;
 }
 
 export interface Invitation {
-  code: string;
-  email: string;
-  used: boolean;
-  createdBy: string;
+  id: string;
+  emailOrPhone: string;
+  invitedBy: string;
+  timestamp: number;
+  status: 'pending' | 'accepted';
+}
+
+export interface AppState {
+  currentUser: User | null;
+  users: User[];
+  sessions: SessionRequest[];
+  invitations: Invitation[];
 }

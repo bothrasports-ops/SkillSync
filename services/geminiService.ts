@@ -1,72 +1,90 @@
 
-// Use correct imports and model versions as per Gemini API guidelines
 import { GoogleGenAI, Type } from "@google/genai";
 import { User } from "../types";
 
-export const findBestMatches = async (query: string, users: User[]): Promise<string[]> => {
-  // Always create a new GoogleGenAI instance right before making an API call
-  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+const API_KEY = process.env.API_KEY || '';
 
-  // Prepare a simplified list of users for the context window
+export const getSmartMatches = async (query: string, users: User[]): Promise<string[]> => {
+  if (!API_KEY) return [];
+
+  const ai = new GoogleGenAI({ apiKey: API_KEY });
   const userContext = users.map(u => ({
     id: u.id,
     name: u.name,
-    skills: u.skills.map(s => `${s.name}: ${s.description}`).join(", ")
+    skills: u.skills.map(s => `${s.name} (${s.category})`)
   }));
 
   try {
-    // Using gemini-3-pro-preview for the reasoning task of matching users to a query
     const response = await ai.models.generateContent({
-      model: "gemini-3-pro-preview",
-      contents: `
-        You are an intelligent matching agent for a skill-sharing platform.
-        User Query: "${query}"
-
-        Available Users:
-        ${JSON.stringify(userContext)}
-
-        Return the IDs of the top 3 users who best match the query based on their skills.
-        Return ONLY a JSON array of strings (IDs).
-      `,
+      model: "gemini-3-flash-preview",
+      contents: `Search Query: "${query}"\nAvailable Users: ${JSON.stringify(userContext)}\n\nRank the user IDs based on how well their skills match the search query. Return only a JSON array of user IDs.`,
       config: {
         responseMimeType: "application/json",
         responseSchema: {
-            type: Type.ARRAY,
-            items: { type: Type.STRING }
+          type: Type.ARRAY,
+          items: { type: Type.STRING }
         }
       }
     });
 
-    // Access text property directly (not a method)
-    const text = response.text;
-    if (!text) return [];
-
-    try {
-        return JSON.parse(text.trim()) as string[];
-    } catch (parseError) {
-        console.error("Failed to parse Gemini response as JSON", text);
-        return [];
-    }
+    return JSON.parse(response.text || '[]');
   } catch (error) {
-    console.error("Gemini matching failed", error);
+    console.error("Gemini Matching Error:", error);
     return [];
   }
 };
 
-export const generateProfileDescription = async (skills: string[]): Promise<string> => {
-    // Create instance using the required named parameter
-    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
-
+export const getSkillSuggestion = async (userBio: string): Promise<string[]> => {
+    if (!API_KEY) return [];
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
     try {
-        // Using gemini-3-flash-preview for basic text generation task
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: `Write a short, engaging 1-sentence bio for a user with these skills: ${skills.join(", ")}. Keep it professional yet friendly.`
+            contents: `Based on this user bio, suggest 3-5 specific skills they could offer to others. Bio: "${userBio}"`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.ARRAY,
+                    items: { type: Type.STRING }
+                }
+            }
         });
-        // Access text property directly
-        return response.text || "Ready to help!";
+        return JSON.parse(response.text || '[]');
     } catch (e) {
-        console.error("Gemini bio generation failed", e);
-        return "Ready to help!";
+        return [];
     }
-}
+};
+
+export const generateInviteEmail = async (inviterName: string, targetContact: string, appUrl: string): Promise<{subject: string, body: string}> => {
+    const defaultData = {
+        subject: `Join me on TimeShare!`,
+        body: `Hi! ${inviterName} invited you to join TimeShare, a community where we exchange skills using time credits. Join us here: ${appUrl}`
+    };
+
+    if (!API_KEY) return defaultData;
+
+    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    try {
+        const response = await ai.models.generateContent({
+            model: "gemini-3-flash-preview",
+            contents: `Generate an invitation for 'TimeShare', a skill-sharing community where everyone gets 40 hours of credit to start.
+            The invitation is from ${inviterName} to ${targetContact}.
+            You MUST include this link for them to join: ${appUrl}.
+            Return a JSON object with 'subject' and 'body' fields. Keep the tone warm and professional. Make sure the link is naturally integrated into the body.`,
+            config: {
+                responseMimeType: "application/json",
+                responseSchema: {
+                    type: Type.OBJECT,
+                    properties: {
+                        subject: { type: Type.STRING },
+                        body: { type: Type.STRING }
+                    },
+                    required: ["subject", "body"]
+                }
+            }
+        });
+        return JSON.parse(response.text || JSON.stringify(defaultData));
+    } catch (e) {
+        return defaultData;
+    }
+};
