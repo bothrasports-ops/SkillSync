@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { User, SessionRequest, SessionStatus, Skill, Invitation, Location } from './types';
 import { db } from './services/db';
 import Header from './components/Header';
@@ -11,15 +10,24 @@ import Invitations from './components/Invitations';
 import Login from './components/Login';
 
 const App: React.FC = () => {
+  // Fix: Defined loading state using useState
   const [loading, setLoading] = useState(true);
+  // Fix: Defined backgroundLoading state using useState
   const [backgroundLoading, setBackgroundLoading] = useState(false);
+  // Fix: Defined users state using useState
   const [users, setUsers] = useState<User[]>([]);
+  // Fix: Defined currentUser state using useState
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  // Fix: Defined sessions state using useState
   const [sessions, setSessions] = useState<SessionRequest[]>([]);
+  // Fix: Defined invitations state using useState
   const [invitations, setInvitations] = useState<Invitation[]>([]);
+  // Fix: Defined currentView state using useState
   const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'requests' | 'invitations'>('home');
+  // Fix: Defined userLocation state using useState
   const [userLocation, setUserLocation] = useState<Location | null>(null);
 
+  // Fix: Wrapped refreshState in useCallback to ensure stable dependency for useEffect
   const refreshState = useCallback(async (isInitial = false) => {
     if (!isInitial) setBackgroundLoading(true);
     try {
@@ -41,6 +49,7 @@ const App: React.FC = () => {
     }
   }, []);
 
+  // Fix: Added useEffect for initial data loading and location fetching
   useEffect(() => {
     refreshState(true);
 
@@ -110,7 +119,6 @@ const App: React.FC = () => {
       alert("Request sent successfully!");
     } catch (e: any) {
       console.error("Session creation error details:", e);
-      // Extract the most useful message from the error object
       const errorMsg = e?.message || e?.details || (typeof e === 'object' ? JSON.stringify(e) : String(e));
       alert(`Failed to send request: ${errorMsg}`);
     } finally {
@@ -203,23 +211,26 @@ const App: React.FC = () => {
         {renderView()}
       </main>
 
-      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white flex items-center gap-2 p-2 rounded-3xl shadow-2xl md:hidden z-50 border border-white/10 backdrop-blur-xl bg-opacity-90">
-        <button onClick={() => setCurrentView('home')} className={`p-4 rounded-2xl transition ${currentView === 'home' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
-            <i className="fa-solid fa-compass text-xl"></i>
+      <nav className="fixed bottom-6 left-1/2 -translate-x-1/2 bg-slate-900 text-white flex items-center gap-1 p-1.5 rounded-3xl shadow-2xl md:hidden z-50 border border-white/10 backdrop-blur-xl bg-opacity-90">
+        <button onClick={() => setCurrentView('home')} className={`p-3.5 rounded-2xl transition ${currentView === 'home' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-compass text-lg"></i>
         </button>
-        <button onClick={() => setCurrentView('requests')} className={`p-4 rounded-2xl transition relative ${currentView === 'requests' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
-            <i className="fa-solid fa-bell text-xl"></i>
+        <button onClick={() => setCurrentView('requests')} className={`p-3.5 rounded-2xl transition relative ${currentView === 'requests' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-bell text-lg"></i>
             {pendingRequestsCount > 0 && (
-                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold">
+                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-slate-900">
                     {pendingRequestsCount}
                 </span>
             )}
         </button>
-        <button onClick={() => setCurrentView('sessions')} className={`p-4 rounded-2xl transition ${currentView === 'sessions' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
-            <i className="fa-solid fa-calendar-days text-xl"></i>
+        <button onClick={() => setCurrentView('sessions')} className={`p-3.5 rounded-2xl transition ${currentView === 'sessions' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-calendar-days text-lg"></i>
         </button>
-        <button onClick={() => setCurrentView('profile')} className={`p-4 rounded-2xl transition ${currentView === 'profile' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
-            <i className="fa-solid fa-user-astronaut text-xl"></i>
+        <button onClick={() => setCurrentView('invitations')} className={`p-3.5 rounded-2xl transition ${currentView === 'invitations' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-paper-plane text-lg"></i>
+        </button>
+        <button onClick={() => setCurrentView('profile')} className={`p-3.5 rounded-2xl transition ${currentView === 'profile' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-user-astronaut text-lg"></i>
         </button>
       </nav>
 
