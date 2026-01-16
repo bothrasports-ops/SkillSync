@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from 'react';
 import { User, Skill } from '../types';
 import { CATEGORIES, PREDEFINED_SKILLS } from '../constants';
@@ -7,9 +6,10 @@ import { getSkillSuggestion } from '../services/geminiService';
 interface ProfileProps {
   user: User;
   onUpdate: (data: Partial<User>) => void;
+  onLogout: () => void;
 }
 
-const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
+const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>(user);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -304,6 +304,20 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                     )}
                 </div>
             </div>
+
+            {/* Logout Section for Mobile & Ease of use */}
+            {!isEditing && (
+                <div className="pt-10 border-t border-slate-100 flex flex-col items-center gap-4">
+                  <button
+                    onClick={onLogout}
+                    className="w-full md:w-auto px-10 py-5 rounded-[2rem] border-2 border-red-50 text-red-500 font-black flex items-center justify-center gap-3 hover:bg-red-50 hover:border-red-100 transition-all active:scale-95 shadow-sm"
+                  >
+                    <i className="fa-solid fa-right-from-bracket"></i>
+                    Sign Out of Community
+                  </button>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest italic text-center">Your local session will be cleared.</p>
+                </div>
+            )}
 
             {isEditing && (
                 <div className="flex gap-4 pt-8 animate-in slide-in-from-bottom-4">

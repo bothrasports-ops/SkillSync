@@ -10,24 +10,15 @@ import Invitations from './components/Invitations';
 import Login from './components/Login';
 
 const App: React.FC = () => {
-  // Fix: Defined loading state using useState
   const [loading, setLoading] = useState(true);
-  // Fix: Defined backgroundLoading state using useState
   const [backgroundLoading, setBackgroundLoading] = useState(false);
-  // Fix: Defined users state using useState
   const [users, setUsers] = useState<User[]>([]);
-  // Fix: Defined currentUser state using useState
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  // Fix: Defined sessions state using useState
   const [sessions, setSessions] = useState<SessionRequest[]>([]);
-  // Fix: Defined invitations state using useState
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  // Fix: Defined currentView state using useState
   const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'requests' | 'invitations'>('home');
-  // Fix: Defined userLocation state using useState
   const [userLocation, setUserLocation] = useState<Location | null>(null);
 
-  // Fix: Wrapped refreshState in useCallback to ensure stable dependency for useEffect
   const refreshState = useCallback(async (isInitial = false) => {
     if (!isInitial) setBackgroundLoading(true);
     try {
@@ -49,7 +40,6 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix: Added useEffect for initial data loading and location fetching
   useEffect(() => {
     refreshState(true);
 
@@ -177,7 +167,7 @@ const App: React.FC = () => {
       case 'home':
         return <Home users={users} currentUser={currentUser} onRequestSession={handleRequestSession} userLocation={userLocation} />;
       case 'profile':
-        return <Profile user={currentUser} onUpdate={handleUpdateProfile} />;
+        return <Profile user={currentUser} onUpdate={handleUpdateProfile} onLogout={handleLogout} />;
       case 'sessions':
         return <Sessions sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
       case 'requests':
