@@ -7,6 +7,18 @@ export const CATEGORIES = [
   'Programming', 'Design', 'Languages', 'Cooking', 'Music', 'Fitness', 'Marketing', 'Crafts', 'Other'
 ];
 
+export const PREDEFINED_SKILLS: Record<string, string[]> = {
+  'Programming': ['React Development', 'Python Scripting', 'JavaScript Basics', 'Mobile App Dev', 'Data Science', 'Web Security'],
+  'Design': ['UI/UX Design', 'Graphic Design', 'Figma Mastery', 'Logo Design', 'Video Editing', '3D Modeling'],
+  'Languages': ['English Conversation', 'Spanish for Beginners', 'French Tutoring', 'Mandarin Basics', 'German Practice'],
+  'Cooking': ['Baking Basics', 'Italian Cuisine', 'Sushi Making', 'Vegan Cooking', 'Pastry Arts', 'Coffee Brewing'],
+  'Music': ['Acoustic Guitar', 'Piano for Beginners', 'Vocal Coaching', 'Music Theory', 'DJing Basics', 'Drumming'],
+  'Fitness': ['Yoga Flow', 'Personal Training', 'Pilates', 'Meditation & Mindfulness', 'HIIT Workout', 'Nutrition Coaching'],
+  'Marketing': ['SEO Strategy', 'Social Media Growth', 'Content Writing', 'Email Marketing', 'Public Speaking'],
+  'Crafts': ['Knitting', 'Pottery', 'Woodworking', 'Jewelry Making', 'Photography Basics'],
+  'Other': ['Community Management', 'Pet Training', 'Gardening', 'Financial Planning', 'Event Organizing']
+};
+
 export const MOCK_USERS: User[] = [
   {
     id: 'admin',
