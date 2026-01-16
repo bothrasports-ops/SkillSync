@@ -8,7 +8,7 @@ import { CATEGORIES } from '../constants';
 interface HomeProps {
   users: User[];
   currentUser: User;
-  onRequestSession: (providerId: string, skill: Skill, duration: number) => void;
+  onRequestSession: (providerId: string, skill: Skill, duration: number, scheduledAt?: number) => void;
   userLocation: Location | null;
 }
 
@@ -18,6 +18,7 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
   const [maxDistance, setMaxDistance] = useState<number | 'Any'>('Any');
   const [requestModal, setRequestModal] = useState<{ user: User, skill: Skill } | null>(null);
   const [requestDuration, setRequestDuration] = useState(1);
+  const [scheduledDateTime, setScheduledDateTime] = useState('');
   const [isAiMatching, setIsAiMatching] = useState(false);
   const [aiMatches, setAiMatches] = useState<string[]>([]);
 
@@ -64,6 +65,14 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
 
     return result;
   }, [users, search, selectedCategory, maxDistance, userLocation, aiMatches, currentUser.id]);
+
+  const handleSendRequest = () => {
+    if (!requestModal) return;
+    const scheduledAt = scheduledDateTime ? new Date(scheduledDateTime).getTime() : undefined;
+    onRequestSession(requestModal.user.id, requestModal.skill, requestDuration, scheduledAt);
+    setRequestModal(null);
+    setScheduledDateTime('');
+  };
 
   return (
     <div className="space-y-8">
@@ -236,16 +245,23 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
                           </div>
                       </div>
 
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Schedule Date & Time</label>
+                        <input
+                          type="datetime-local"
+                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition"
+                          value={scheduledDateTime}
+                          onChange={(e) => setScheduledDateTime(e.target.value)}
+                        />
+                      </div>
+
                       <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 text-sm flex gap-3">
                           <i className="fa-solid fa-circle-info mt-1"></i>
                           <p>Deducting <strong>{requestDuration} hours</strong> from your balance of <strong>{currentUser.balanceHours.toFixed(1)}h</strong>.</p>
                       </div>
 
                       <button
-                        onClick={() => {
-                            onRequestSession(requestModal.user.id, requestModal.skill, requestDuration);
-                            setRequestModal(null);
-                        }}
+                        onClick={handleSendRequest}
                         className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition"
                       >
                         Send Request

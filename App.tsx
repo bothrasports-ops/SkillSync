@@ -83,7 +83,7 @@ const App: React.FC = () => {
     }
   };
 
-  const handleRequestSession = async (providerId: string, skill: Skill, duration: number) => {
+  const handleRequestSession = async (providerId: string, skill: Skill, duration: number, scheduledAt?: number) => {
     if (!currentUser) return;
     if (currentUser.balanceHours < duration) {
         alert("Not enough hours in your balance!");
@@ -99,6 +99,7 @@ const App: React.FC = () => {
       durationHours: duration,
       status: SessionStatus.PENDING,
       timestamp: Date.now(),
+      scheduledAt: scheduledAt
     };
 
     setBackgroundLoading(true);

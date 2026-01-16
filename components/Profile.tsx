@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { User, Skill } from '../types';
 import { CATEGORIES, PREDEFINED_SKILLS } from '../constants';
 import { getSkillSuggestion } from '../services/geminiService';
@@ -13,6 +13,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>(user);
   const [isGenerating, setIsGenerating] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSuggestSkills = async () => {
       if (!formData.bio) return;
@@ -21,7 +22,6 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
         const suggestions = await getSkillSuggestion(formData.bio);
         if (suggestions.length > 0) {
             const newSkills: Skill[] = suggestions.map(s => {
-                // Try to find a matching category, default to Other
                 let category = 'Other';
                 for (const cat of Object.keys(PREDEFINED_SKILLS)) {
                     if (PREDEFINED_SKILLS[cat].includes(s)) {
@@ -60,7 +60,6 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
     const updated = (formData.skills || []).map(s => {
       if (s.id === id) {
         const updatedSkill = { ...s, [field]: value };
-        // If category changed, reset name to first item in that category to avoid mismatch
         if (field === 'category') {
             updatedSkill.name = PREDEFINED_SKILLS[value]?.[0] || 'Custom Skill';
         }
@@ -80,6 +79,27 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
     setIsEditing(false);
   };
 
+  const randomizeAvatar = () => {
+    const randomSeed = Math.random().toString(36).substring(7);
+    const newAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${randomSeed}`;
+    setFormData({ ...formData, avatar: newAvatar });
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFormData({ ...formData, avatar: reader.result as string });
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const triggerFilePicker = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-slide-up pb-20">
       {/* Profile Header Card */}
@@ -87,22 +107,53 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
         <div className="absolute top-0 left-0 w-full h-24 bg-gradient-to-r from-indigo-50 to-violet-50 opacity-50"></div>
 
         <div className="relative group mb-8 z-10">
-            <img src={user.avatar} alt={user.name} className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white rotate-2 transition-transform group-hover:rotate-0" />
-            <button className="absolute -bottom-2 -right-2 bg-slate-900 text-white w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl border-2 border-white hover:scale-110 transition active:scale-95">
-                <i className="fa-solid fa-camera"></i>
-            </button>
+            <img
+              src={isEditing ? formData.avatar : user.avatar}
+              alt={user.name}
+              className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white rotate-2 transition-transform group-hover:rotate-0"
+            />
+
+            <input
+              type="file"
+              ref={fileInputRef}
+              className="hidden"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+
+            {isEditing && (
+              <div className="absolute -bottom-2 -right-2 flex gap-2">
+                <button
+                  onClick={randomizeAvatar}
+                  className="bg-indigo-600 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-xl border-2 border-white hover:scale-110 transition active:scale-95"
+                  title="Randomize Avatar"
+                >
+                    <i className="fa-solid fa-rotate"></i>
+                </button>
+                <button
+                  onClick={triggerFilePicker}
+                  className="bg-slate-900 text-white w-10 h-10 rounded-xl flex items-center justify-center shadow-xl border-2 border-white hover:scale-110 transition active:scale-95"
+                  title="Upload Custom Image"
+                >
+                    <i className="fa-solid fa-camera"></i>
+                </button>
+              </div>
+            )}
         </div>
 
         <div className="text-center z-10 w-full">
             {isEditing ? (
                 <div className="max-w-md mx-auto space-y-4">
-                    <input
-                        type="text"
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="text-3xl font-black text-center border-b-4 border-indigo-500 outline-none w-full bg-transparent pb-1"
-                        placeholder="Your Name"
-                    />
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Display Name</label>
+                      <input
+                          type="text"
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          className="text-3xl font-black text-center border-b-4 border-indigo-500 outline-none w-full bg-transparent pb-1"
+                          placeholder="Your Name"
+                      />
+                    </div>
                 </div>
             ) : (
                 <>

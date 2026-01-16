@@ -30,6 +30,7 @@ const Requests: React.FC<RequestsProps> = ({ sessions, currentUser, users, onUpd
             <h3 className="text-sm font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Action Required ({incomingPending.length})</h3>
             {incomingPending.length > 0 ? incomingPending.map(session => {
                 const requester = getOtherUser(session.requesterId);
+                const scheduledDate = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : 'Not scheduled';
                 return (
                     <div key={session.id} className="bg-white rounded-[2rem] border border-slate-200 p-8 flex flex-col md:flex-row gap-6 items-start md:items-center shadow-sm hover:shadow-md transition">
                         <div className="flex items-center gap-4 flex-1">
@@ -37,14 +38,20 @@ const Requests: React.FC<RequestsProps> = ({ sessions, currentUser, users, onUpd
                             <div>
                                 <h4 className="font-black text-lg text-slate-800">{requester?.name}</h4>
                                 <p className="text-indigo-600 text-sm font-bold">Wants to learn: {session.skillName}</p>
-                                <div className="flex items-center gap-4 mt-2">
-                                    <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full flex items-center gap-1">
-                                        <i className="fa-regular fa-clock"></i>
-                                        {session.durationHours} Hours
-                                    </span>
-                                    <span className="text-xs font-bold text-slate-400">
-                                        {new Date(session.timestamp).toLocaleDateString()}
-                                    </span>
+                                <div className="space-y-1 mt-2">
+                                  <div className="flex items-center gap-4">
+                                      <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full flex items-center gap-1">
+                                          <i className="fa-regular fa-clock"></i>
+                                          {session.durationHours} Hours
+                                      </span>
+                                      <span className="text-xs font-bold text-slate-400">
+                                          Requested: {new Date(session.timestamp).toLocaleDateString()}
+                                      </span>
+                                  </div>
+                                  <p className="text-[10px] text-indigo-500 font-black uppercase tracking-widest flex items-center gap-2">
+                                    <i className="fa-solid fa-calendar-day"></i>
+                                    Proposed Time: {scheduledDate}
+                                  </p>
                                 </div>
                             </div>
                         </div>
@@ -79,13 +86,14 @@ const Requests: React.FC<RequestsProps> = ({ sessions, currentUser, users, onUpd
             <div className="space-y-4">
                 {incomingAccepted.map(session => {
                     const requester = getOtherUser(session.requesterId);
+                    const scheduledDate = session.scheduledAt ? new Date(session.scheduledAt).toLocaleString() : 'Not scheduled';
                     return (
                         <div key={session.id} className="bg-white rounded-2xl border border-slate-200 p-6 flex justify-between items-center opacity-75">
                             <div className="flex items-center gap-4">
                                 <img src={requester?.avatar} className="w-10 h-10 rounded-xl" alt="avatar" />
                                 <div>
                                     <p className="font-bold text-slate-800">{requester?.name}</p>
-                                    <p className="text-xs text-slate-400">Teaching {session.skillName}</p>
+                                    <p className="text-xs text-slate-400">Teaching {session.skillName} • {scheduledDate}</p>
                                 </div>
                             </div>
                             <span className="text-[10px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-600 px-3 py-1 rounded-full">In Progress</span>

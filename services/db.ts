@@ -18,12 +18,29 @@ export const db = {
     ]);
 
     const users: User[] = (pRes.data || []).map(p => this.mapProfile(p));
+    const sessions: SessionRequest[] = (sRes.data || []).map(s => this.mapSession(s));
 
     return {
       currentUser: null,
       users,
-      sessions: (sRes.data || []) as SessionRequest[],
+      sessions,
       invitations: (iRes.data || []) as Invitation[]
+    };
+  },
+
+  mapSession(s: any): SessionRequest {
+    return {
+      id: s.id,
+      requesterId: s.requester_id,
+      providerId: s.provider_id,
+      skillId: s.skill_id,
+      skillName: s.skill_name,
+      durationHours: s.duration_hours,
+      status: s.status as SessionStatus,
+      timestamp: s.timestamp,
+      scheduledAt: s.scheduled_at,
+      rating: s.rating,
+      review: s.review
     };
   },
 
@@ -135,7 +152,8 @@ export const db = {
       skill_name: request.skillName,
       duration_hours: request.durationHours,
       status: request.status,
-      timestamp: request.timestamp
+      timestamp: request.timestamp,
+      scheduled_at: request.scheduledAt
     });
 
     const { data: profile } = await supabase.from('profiles').select('balance_hours').eq('id', request.requesterId).single();

@@ -44,6 +44,7 @@ export interface SessionRequest {
   durationHours: number;
   status: SessionStatus;
   timestamp: number;
+  scheduledAt?: number; // timestamp for the agreed meeting time
   rating?: number;
   review?: string;
 }

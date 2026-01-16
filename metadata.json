@@ -2,6 +2,7 @@
   "name": "TimeShare - Skill Sharing Hub",
   "description": "A peer-to-peer skill sharing platform where time is the only currency. Exchange your skills for hours and grow your knowledge within a trusted community.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "camera"
   ]
 }
