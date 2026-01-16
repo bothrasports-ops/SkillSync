@@ -63,7 +63,7 @@ const App: React.FC = () => {
     const newInvite: Invitation = {
       id: Math.random().toString(36).substr(2, 9),
       emailOrPhone,
-      invitedBy: currentUser.email, // Use email as requested
+      invitedBy: currentUser.email,
       timestamp: Date.now(),
       status: 'pending'
     };
@@ -85,8 +85,9 @@ const App: React.FC = () => {
 
   const handleRequestSession = async (providerId: string, skill: Skill, duration: number, scheduledAt?: number) => {
     if (!currentUser) return;
+
     if (currentUser.balanceHours < duration) {
-        alert("Not enough hours in your balance!");
+        alert(`Not enough hours! You need ${duration}h but only have ${currentUser.balanceHours.toFixed(1)}h.`);
         return;
     }
 
@@ -107,8 +108,11 @@ const App: React.FC = () => {
       await db.createSession(newRequest);
       await refreshState();
       alert("Request sent successfully!");
-    } catch (e) {
-      alert("Failed to send request. Check your connection.");
+    } catch (e: any) {
+      console.error("Session creation error details:", e);
+      // Extract the most useful message from the error object
+      const errorMsg = e?.message || e?.details || (typeof e === 'object' ? JSON.stringify(e) : String(e));
+      alert(`Failed to send request: ${errorMsg}`);
     } finally {
       setBackgroundLoading(false);
     }

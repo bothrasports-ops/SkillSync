@@ -33,7 +33,6 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
   const filteredUsers = useMemo(() => {
     let result = users.filter(u => u.id !== currentUser.id);
 
-    // Filter by skill or name
     if (search && !aiMatches.length) {
       result = result.filter(u =>
         u.name.toLowerCase().includes(search.toLowerCase()) ||
@@ -49,12 +48,10 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
       });
     }
 
-    // Filter by category
     if (selectedCategory !== 'All') {
       result = result.filter(u => u.skills.some(s => s.category === selectedCategory));
     }
 
-    // Geo filtering
     if (maxDistance !== 'Any' && userLocation) {
         result = result.filter(u => {
             if (!u.location) return false;
@@ -68,44 +65,49 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
 
   const handleSendRequest = () => {
     if (!requestModal) return;
-    const scheduledAt = scheduledDateTime ? new Date(scheduledDateTime).getTime() : undefined;
+    if (!scheduledDateTime) {
+      alert("Please select a date and time for your session.");
+      return;
+    }
+    const scheduledAt = new Date(scheduledDateTime).getTime();
     onRequestSession(requestModal.user.id, requestModal.skill, requestDuration, scheduledAt);
     setRequestModal(null);
     setScheduledDateTime('');
+    setRequestDuration(1);
   };
 
   return (
     <div className="space-y-8">
-      {/* Hero / Stats */}
-      <section className="bg-indigo-600 rounded-3xl p-8 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
+      {/* Hero Section */}
+      <section className="bg-indigo-600 rounded-[2.5rem] p-8 md:p-12 text-white shadow-2xl shadow-indigo-200 relative overflow-hidden">
         <div className="relative z-10 max-w-2xl">
-            <h2 className="text-4xl font-bold mb-4">Discover Amazing Skills Around You</h2>
-            <p className="text-indigo-100 mb-6 text-lg">Use your 40-hour budget to learn from others, or offer your own skills to earn even more hours.</p>
+            <h2 className="text-4xl md:text-5xl font-black mb-4 leading-tight">Master New Skills,<br/>Share Your Own.</h2>
+            <p className="text-indigo-100 mb-8 text-lg opacity-90">Every member starts with 40 hours. Use them to learn, earn them back by teaching others. Time is our only currency.</p>
             <div className="flex gap-4">
-                <div className="bg-white/10 backdrop-blur rounded-2xl p-4 flex-1">
-                    <span className="block text-3xl font-bold">{currentUser.balanceHours.toFixed(1)}h</span>
-                    <span className="text-indigo-200 text-sm">Your Balance</span>
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 flex-1 border border-white/10">
+                    <span className="block text-3xl font-black">{currentUser.balanceHours.toFixed(1)}h</span>
+                    <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest">Available Balance</span>
                 </div>
-                <div className="bg-white/10 backdrop-blur rounded-2xl p-4 flex-1">
-                    <span className="block text-3xl font-bold">{users.length}</span>
-                    <span className="text-indigo-200 text-sm">Members</span>
+                <div className="bg-white/10 backdrop-blur-md rounded-3xl p-6 flex-1 border border-white/10">
+                    <span className="block text-3xl font-black">{users.length}</span>
+                    <span className="text-indigo-200 text-xs font-bold uppercase tracking-widest">Global Hub Members</span>
                 </div>
             </div>
         </div>
         <div className="absolute top-0 right-0 p-8 opacity-10 pointer-events-none">
-            <i className="fa-solid fa-hourglass text-[200px] -rotate-12"></i>
+            <i className="fa-solid fa-bolt-lightning text-[250px] -rotate-12 translate-x-12 -translate-y-12"></i>
         </div>
       </section>
 
-      {/* Search & Filters */}
-      <section className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 space-y-4">
+      {/* Search & Filters Section */}
+      <section className="bg-white rounded-3xl shadow-sm border border-slate-200 p-8 space-y-6">
         <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1 relative">
-                <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <i className="fa-solid fa-magnifying-glass absolute left-5 top-1/2 -translate-y-1/2 text-slate-400"></i>
                 <input
                     type="text"
-                    placeholder="Search for a skill (e.g. 'coding', 'yoga', 'cooking')..."
-                    className="w-full pl-12 pr-4 py-3 rounded-xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 transition"
+                    placeholder="What would you like to learn today?"
+                    className="w-full pl-14 pr-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all outline-none font-medium text-slate-700"
                     value={search}
                     onChange={(e) => {
                         setSearch(e.target.value);
@@ -117,34 +119,34 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
             <button
                 onClick={handleAiMatch}
                 disabled={isAiMatching || !search}
-                className="bg-slate-900 text-white px-6 py-3 rounded-xl font-medium hover:bg-slate-800 disabled:opacity-50 transition flex items-center justify-center gap-2"
+                className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold hover:bg-slate-800 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg active:scale-95"
             >
                 {isAiMatching ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
                 AI Match
             </button>
         </div>
 
-        <div className="flex flex-wrap gap-4 items-center pt-2">
-            <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-500">Category:</span>
+        <div className="flex flex-wrap gap-6 items-center pt-2">
+            <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Category</span>
                 <select
                     value={selectedCategory}
                     onChange={(e) => setSelectedCategory(e.target.value)}
-                    className="bg-slate-100 border-none rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                    className="bg-slate-100 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
-                    <option value="All">All Categories</option>
+                    <option value="All">All Topics</option>
                     {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
             </div>
 
-            <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold text-slate-500">Distance:</span>
+            <div className="flex items-center gap-3">
+                <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Proximity</span>
                 <select
                     value={maxDistance}
                     onChange={(e) => setMaxDistance(e.target.value === 'Any' ? 'Any' : Number(e.target.value))}
-                    className="bg-slate-100 border-none rounded-lg px-3 py-1.5 text-sm font-medium focus:ring-2 focus:ring-indigo-500"
+                    className="bg-slate-100 border-none rounded-xl px-4 py-2 text-sm font-bold focus:ring-2 focus:ring-indigo-500 cursor-pointer"
                 >
-                    <option value="Any">Anywhere</option>
+                    <option value="Any">Everywhere</option>
                     <option value="5">Within 5km</option>
                     <option value="20">Within 20km</option>
                     <option value="100">Within 100km</option>
@@ -154,61 +156,68 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
       </section>
 
       {/* Results Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {filteredUsers.length > 0 ? filteredUsers.map(user => {
           const hasSkills = user.skills && user.skills.length > 0;
-
           return (
-            <div key={user.id} className={`bg-white rounded-2xl border border-slate-200 shadow-sm transition group ${!hasSkills ? 'opacity-75' : 'hover:shadow-md'}`}>
-              <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                          <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-xl object-cover" />
+            <div key={user.id} className={`bg-white rounded-[2rem] border border-slate-200 shadow-sm transition-all group overflow-hidden flex flex-col ${!hasSkills ? 'opacity-70' : 'hover:shadow-xl hover:shadow-indigo-50 hover:-translate-y-1'}`}>
+              <div className="p-8 flex-1">
+                  <div className="flex items-start justify-between mb-6">
+                      <div className="flex items-center gap-4">
+                          <img src={user.avatar} alt={user.name} className="w-16 h-16 rounded-2xl object-cover shadow-sm border border-slate-100" />
                           <div>
-                              <h3 className="font-bold text-lg group-hover:text-indigo-600 transition">{user.name}</h3>
-                              <div className="flex items-center text-xs text-slate-400 font-medium">
-                                  <i className="fa-solid fa-star text-amber-400 mr-1"></i>
-                                  {user.rating.toFixed(1)} ({user.reviewCount} reviews)
+                              <h3 className="font-black text-xl text-slate-800 group-hover:text-indigo-600 transition-colors">{user.name}</h3>
+                              <div className="flex items-center text-xs text-amber-500 font-black tracking-wide mt-0.5">
+                                  <i className="fa-solid fa-star mr-1"></i>
+                                  {user.rating.toFixed(1)} <span className="text-slate-300 mx-1">•</span> <span className="text-slate-400">{user.reviewCount} Reviews</span>
                               </div>
                           </div>
                       </div>
                       {userLocation && user.location && (
-                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-wider">
+                          <span className="text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 px-3 py-1 rounded-full uppercase tracking-[0.2em]">
                               {getDistanceLabel(calculateDistance(userLocation.lat, userLocation.lng, user.location.lat, user.location.lng))}
                           </span>
                       )}
                   </div>
 
-                  <p className="text-slate-600 text-sm line-clamp-2 mb-6 h-10">{user.bio || 'Sharing knowledge and building community.'}</p>
+                  <p className="text-slate-500 text-sm font-medium leading-relaxed mb-8 h-10 line-clamp-2">{user.bio || 'Dedicated community member sharing unique expertise.'}</p>
 
-                  <div className="space-y-3">
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Offers Skills</span>
-                      <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                  <div className="space-y-4">
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">Available Expertise</span>
+                      <div className="flex flex-wrap gap-2 min-h-[2.5rem]">
                           {hasSkills ? user.skills.map(skill => (
                               <button
                                   key={skill.id}
                                   onClick={() => setRequestModal({ user, skill })}
-                                  className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-600 hover:text-white transition"
+                                  className="px-4 py-2 bg-indigo-50 text-indigo-700 text-xs font-black rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
                               >
                                   {skill.name}
                               </button>
                           )) : (
-                            <span className="text-xs text-slate-400 italic">No skills listed yet</span>
+                            <div className="flex items-center gap-2 text-slate-400 italic text-xs py-2">
+                                <i className="fa-solid fa-hourglass-start text-[10px]"></i>
+                                Setting up teaching curriculum...
+                            </div>
                           )}
                       </div>
                   </div>
               </div>
-              <div className="border-t border-slate-100 p-4 bg-slate-50/50 rounded-b-2xl">
+              <div className="p-6 bg-slate-50/50 border-t border-slate-100 mt-auto">
                   <button
                       disabled={!hasSkills}
                       onClick={() => hasSkills && setRequestModal({ user, skill: user.skills[0] })}
-                      className={`w-full py-2 border rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+                      className={`w-full py-4 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-2 ${
                         hasSkills
-                          ? 'bg-white border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600'
-                          : 'bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                          ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg shadow-slate-100 active:scale-95'
+                          : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200'
                       }`}
                   >
-                      {hasSkills ? 'Connect & Learn' : (
+                      {hasSkills ? (
+                        <>
+                          <i className="fa-solid fa-calendar-plus text-xs"></i>
+                          Connect & Learn
+                        </>
+                      ) : (
                         <>
                           <i className="fa-solid fa-lock text-[10px]"></i>
                           No Skills Offered
@@ -219,68 +228,79 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
             </div>
           );
         }) : (
-            <div className="col-span-full py-20 text-center">
-                <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                    <i className="fa-solid fa-magnifying-glass text-slate-300 text-3xl"></i>
+            <div className="col-span-full py-24 text-center">
+                <div className="w-24 h-24 bg-slate-100 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
+                    <i className="fa-solid fa-compass text-slate-200 text-4xl"></i>
                 </div>
-                <h3 className="text-xl font-bold text-slate-400">No matches found</h3>
-                <p className="text-slate-400">Try adjusting your filters or search keywords.</p>
+                <h3 className="text-2xl font-black text-slate-400">No matches found</h3>
+                <p className="text-slate-400 font-medium">Try broadening your search or adjusting the filters.</p>
             </div>
         )}
       </div>
 
-      {/* Request Modal */}
+      {/* Booking Pop-up Modal */}
       {requestModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass">
-              <div className="bg-white rounded-3xl w-full max-w-md shadow-2xl animate-in fade-in zoom-in duration-200 overflow-hidden">
-                  <div className="bg-indigo-600 p-6 text-white flex justify-between items-center">
-                      <div>
-                        <h3 className="text-xl font-bold">Request Session</h3>
-                        <p className="text-indigo-100 text-sm opacity-90">Learning {requestModal.skill.name} from {requestModal.user.name}</p>
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass animate-in fade-in duration-300">
+              <div className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl animate-in zoom-in duration-300 overflow-hidden border border-slate-100">
+                  <div className="bg-indigo-600 p-8 text-white relative">
+                      <div className="relative z-10">
+                        <h3 className="text-2xl font-black tracking-tight">Schedule Session</h3>
+                        <p className="text-indigo-100 text-sm font-medium mt-1">Learning {requestModal.skill.name} from {requestModal.user.name}</p>
                       </div>
-                      <button onClick={() => setRequestModal(null)} className="text-white/80 hover:text-white transition">
-                        <i className="fa-solid fa-xmark text-xl"></i>
+                      <button onClick={() => setRequestModal(null)} className="absolute top-8 right-8 text-white/60 hover:text-white transition-colors p-2">
+                        <i className="fa-solid fa-xmark text-2xl"></i>
                       </button>
                   </div>
-                  <div className="p-8 space-y-6">
-                      <div className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl">
-                          <div className="text-sm">
-                            <span className="block font-bold text-slate-700">Duration</span>
-                            <span className="text-slate-400">How many hours?</span>
-                          </div>
-                          <div className="flex items-center gap-4">
-                              <button
-                                onClick={() => setRequestDuration(prev => Math.max(0.5, prev - 0.5))}
-                                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-white hover:border-indigo-500 transition"
-                              >-</button>
-                              <span className="font-bold text-lg min-w-[3rem] text-center">{requestDuration}h</span>
-                              <button
-                                onClick={() => setRequestDuration(prev => Math.min(currentUser.balanceHours, prev + 0.5))}
-                                className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-white hover:border-indigo-500 transition"
-                              >+</button>
+                  <div className="p-10 space-y-8">
+                      {/* Duration Select */}
+                      <div className="space-y-3">
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Session Length</label>
+                          <div className="flex items-center justify-between p-6 bg-slate-50 rounded-3xl border border-slate-100">
+                              <div className="text-sm font-bold text-slate-700 flex flex-col">
+                                <span>Duration</span>
+                                <span className="text-xs font-medium text-slate-400">Credits needed</span>
+                              </div>
+                              <div className="flex items-center gap-6">
+                                  <button
+                                    onClick={() => setRequestDuration(prev => Math.max(0.5, prev - 0.5))}
+                                    className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center hover:border-indigo-500 hover:text-indigo-600 transition-all font-black"
+                                  >–</button>
+                                  <span className="font-black text-xl min-w-[3rem] text-center text-indigo-600">{requestDuration}h</span>
+                                  <button
+                                    onClick={() => setRequestDuration(prev => Math.min(currentUser.balanceHours, prev + 0.5))}
+                                    className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center hover:border-indigo-500 hover:text-indigo-600 transition-all font-black"
+                                  >+</button>
+                              </div>
                           </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-1">Schedule Date & Time</label>
-                        <input
-                          type="datetime-local"
-                          className="w-full px-6 py-4 rounded-2xl bg-slate-50 border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none transition"
-                          value={scheduledDateTime}
-                          onChange={(e) => setScheduledDateTime(e.target.value)}
-                        />
+                      {/* Date Time Picker */}
+                      <div className="space-y-3">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1">Proposed Meeting Time</label>
+                        <div className="relative">
+                            <i className="fa-solid fa-calendar-day absolute left-6 top-1/2 -translate-y-1/2 text-indigo-500"></i>
+                            <input
+                              type="datetime-local"
+                              className="w-full pl-14 pr-6 py-5 rounded-3xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white outline-none transition-all font-bold text-slate-700 text-sm"
+                              value={scheduledDateTime}
+                              onChange={(e) => setScheduledDateTime(e.target.value)}
+                            />
+                        </div>
                       </div>
 
-                      <div className="p-4 rounded-2xl bg-amber-50 border border-amber-100 text-amber-800 text-sm flex gap-3">
-                          <i className="fa-solid fa-circle-info mt-1"></i>
-                          <p>Deducting <strong>{requestDuration} hours</strong> from your balance of <strong>{currentUser.balanceHours.toFixed(1)}h</strong>.</p>
+                      <div className="p-6 rounded-3xl bg-indigo-50/50 border border-indigo-100 text-indigo-800 text-sm flex gap-4">
+                          <i className="fa-solid fa-circle-info mt-1 text-indigo-500"></i>
+                          <p className="font-medium leading-relaxed">
+                            This booking will deduct <span className="font-black underline">{requestDuration} hours</span> from your current balance of <span className="font-black">{currentUser.balanceHours.toFixed(1)}h</span>.
+                          </p>
                       </div>
 
                       <button
                         onClick={handleSendRequest}
-                        className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl shadow-indigo-100 hover:bg-indigo-700 transition"
+                        className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black shadow-xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"
                       >
-                        Send Request
+                        <i className="fa-solid fa-paper-plane text-xs"></i>
+                        Send Booking Request
                       </button>
                   </div>
               </div>
