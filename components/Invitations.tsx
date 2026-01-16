@@ -20,7 +20,6 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
     if (!target) return;
     setIsDrafting(true);
     try {
-        // Pass window.location.origin as the appUrl so it's included in the email
         const result = await generateInviteEmail(currentUser.name, target, window.location.origin);
         setShowDraft({ contact: target, subject: result.subject, message: result.body });
     } catch (e) {
@@ -68,9 +67,10 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
         copyToClipboard();
     }
   };
-// Only allow canceling if the current user is the inviter or an admin, and it's pending
+
   const canCancel = (inv: Invitation) => {
-    return (inv.invitedBy === currentUser.id || currentUser.isAdmin) && inv.status === 'pending';
+    // Can cancel if invited by current user (matched by email) or if current user is admin
+    return (inv.invitedBy === currentUser.email || currentUser.isAdmin) && inv.status === 'pending';
   };
 
   return (
@@ -131,29 +131,29 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
                                     {new Date(inv.timestamp).toLocaleDateString()}
                                 </span>
                                 <span className="w-1 h-1 bg-slate-200 rounded-full"></span>
-                                <span className="text-[10px] text-indigo-400 font-bold uppercase">Community Access</span>
+                                <span className="text-[10px] text-indigo-400 font-bold uppercase">Invited By: {inv.invitedBy}</span>
                             </div>
                         </div>
                     </div>
-                  <div className="flex items-center gap-3">
-                      {canCancel(inv) && (
-                          <button
-                              onClick={() => onCancel(inv.id)}
-                              title="Cancel Invitation"
-                              className="text-slate-300 hover:text-red-500 transition-colors p-2"
-                          >
-                              <i className="fa-solid fa-trash-can"></i>
-                          </button>
-                      )}
-                      <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
-                          inv.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
-                          inv.status === 'cancelled' ? 'bg-slate-50 text-slate-400 border border-slate-100 line-through' :
-                          'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
-                          {inv.status}
-                      </span>
-                  </div>
-              </div>
-          )) : (
+                    <div className="flex items-center gap-3">
+                        {canCancel(inv) && (
+                            <button
+                                onClick={() => onCancel(inv.id)}
+                                title="Cancel Invitation"
+                                className="text-slate-300 hover:text-red-500 transition-colors p-2"
+                            >
+                                <i className="fa-solid fa-trash-can"></i>
+                            </button>
+                        )}
+                        <span className={`px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${
+                            inv.status === 'pending' ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                            inv.status === 'cancelled' ? 'bg-slate-50 text-slate-400 border border-slate-100 line-through' :
+                            'bg-emerald-50 text-emerald-600 border border-emerald-100'}`}>
+                            {inv.status}
+                        </span>
+                    </div>
+                </div>
+            )) : (
                 <div className="text-center py-16 bg-white rounded-[2.5rem] border border-dashed border-slate-200">
                     <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4">
                         <i className="fa-solid fa-ghost text-slate-200 text-3xl"></i>
@@ -167,7 +167,7 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
       {/* Review Invite Modal */}
       {showDraft && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass animate-in fade-in duration-300">
-              <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="bg-white rounded-[2.5rem] w-full max-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
                   <div className="bg-slate-900 p-8 text-white">
                       <div className="flex justify-between items-start">
                           <div>

@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User } from '../types';
 import { db } from '../services/db';
 
@@ -8,15 +8,13 @@ interface LoginProps {
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
-  const [step, setStep] = useState<'email' | 'otp' | 'signup'>('email');
+  const [step, setStep] = useState<'email' | 'signup'>('email');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [otpSentNotice, setOtpSentNotice] = useState(false);
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -27,37 +25,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
     try {
         const result = await db.checkAccess(email.trim());
         if (result.status === 'existing' && result.profile) {
+            // Log in immediately
             onLogin(result.profile);
         } else if (result.status === 'invited') {
-            await db.sendOTP(email);
-            setStep('otp');
-            setOtpSentNotice(true);
-            setTimeout(() => setOtpSentNotice(false), 5000);
-        } else {
-            setError("Membership is by invitation only. Please contact an existing member.");
-        }
-    } catch (err) {
-        setError("Network error. Please try again.");
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (otp.length !== 6) return;
-    setLoading(true);
-    setError(null);
-
-    try {
-        const isValid = await db.verifyOTP(email, otp);
-        if (isValid) {
+            // Redirect to signup form immediately
             setStep('signup');
         } else {
-            setError("Invalid verification code. Please try again.");
+            setError("Sign-up using an invitation only. Please contact an existing member.");
         }
     } catch (err) {
-        setError("Verification failed. Please try again.");
+        setError("Connection error. Please try again.");
     } finally {
         setLoading(false);
     }
@@ -96,10 +73,10 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                     <form onSubmit={handleEmailSubmit} className="space-y-6">
                         <h2 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-3">
                             <span className="w-8 h-8 rounded-full bg-slate-900 text-white text-xs flex items-center justify-center font-black">01</span>
-                            Enter Email
+                            Access Hub
                         </h2>
                         <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Your Email</label>
                             <input
                                 type="email"
                                 value={email}
@@ -110,51 +87,15 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                             />
                         </div>
                         <button type="submit" disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-800">
-                            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : "Sign In / Register"}
-                        </button>
-                    </form>
-                )}
-
-                {step === 'otp' && (
-                    <form onSubmit={handleOtpSubmit} className="space-y-6">
-                        <div className="flex justify-between items-center mb-6">
-                            <h2 className="text-xl font-bold text-slate-800">Verify Email</h2>
-                            <button onClick={() => setStep('email')} className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest hover:underline">Change Email</button>
-                        </div>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                            We've sent a 6-digit verification code to <span className="font-bold text-slate-600">{email}</span>.
-                        </p>
-
-                        {otpSentNotice && (
-                            <div className="bg-indigo-50 text-indigo-700 p-3 rounded-xl text-[10px] font-bold flex items-center gap-2 animate-bounce">
-                                <i className="fa-solid fa-envelope-open-text"></i>
-                                Check your console for the OTP code!
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">6-Digit Code</label>
-                            <input
-                                type="text"
-                                maxLength={6}
-                                value={otp}
-                                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                placeholder="000000"
-                                className="w-full px-6 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-500 focus:bg-white transition-all outline-none text-center text-3xl font-black tracking-[0.5em] text-slate-800"
-                                required
-                                autoFocus
-                            />
-                        </div>
-                        <button type="submit" disabled={loading || otp.length !== 6} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 transition-all hover:bg-indigo-700">
-                            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : "Verify & Continue"}
+                            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : "Enter Community"}
                         </button>
                     </form>
                 )}
 
                 {step === 'signup' && (
                     <form onSubmit={handleSignUp} className="space-y-6">
-                        <h2 className="text-xl font-bold text-slate-800 mb-2">Complete Your Profile</h2>
-                        <p className="text-xs text-slate-400 mb-6 italic">Welcome! As an invited guest, you start with 40 hours.</p>
+                        <h2 className="text-xl font-bold text-slate-800 mb-2">Create Profile</h2>
+                        <p className="text-xs text-slate-400 mb-6 italic">Welcome to the network! You'll receive 40 initial hours.</p>
 
                         <div className="space-y-4">
                             <div className="space-y-1">
@@ -162,17 +103,17 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
                                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-6 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-slate-700" placeholder="John Doe" required />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Mobile Number</label>
                                 <input type="text" value={phone} onChange={(e) => setPhone(e.target.value)} className="w-full px-6 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-slate-700" placeholder="+1..." />
                             </div>
                             <div className="space-y-1">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Bio (Tell us what you offer)</label>
-                                <textarea value={bio} onChange={(e) => setBio(e.target.value)} className="w-full px-6 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-slate-700" rows={3} placeholder="Photography, Cooking, Web Design..." />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Brief Bio</label>
+                                <textarea value={bio} onChange={(e) => setBio(e.target.value)} className="w-full px-6 py-3 rounded-xl bg-slate-50 border border-slate-100 outline-none focus:border-indigo-500 transition-all font-medium text-slate-700" rows={3} placeholder="I can teach..." />
                             </div>
                         </div>
 
                         <button type="submit" disabled={loading} className="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 transition-all hover:bg-slate-800">
-                            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : "Start Sharing Time"}
+                            {loading ? <i className="fa-solid fa-circle-notch animate-spin"></i> : "Complete Registration"}
                         </button>
                     </form>
                 )}
@@ -187,7 +128,7 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
 
             <p className="mt-8 text-center text-slate-400 text-xs font-medium uppercase tracking-widest">
                 <i className="fa-solid fa-shield-halved mr-2"></i>
-                P2P Trust Network
+                Private Trust Network
             </p>
         </div>
     </div>

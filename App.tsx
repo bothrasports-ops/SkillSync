@@ -63,7 +63,7 @@ const App: React.FC = () => {
     const newInvite: Invitation = {
       id: Math.random().toString(36).substr(2, 9),
       emailOrPhone,
-      invitedBy: currentUser.id,
+      invitedBy: currentUser.email, // Use email as requested
       timestamp: Date.now(),
       status: 'pending'
     };

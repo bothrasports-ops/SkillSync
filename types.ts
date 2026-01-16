@@ -51,7 +51,7 @@ export interface SessionRequest {
 export interface Invitation {
   id: string;
   emailOrPhone: string;
-  invitedBy: string;
+  invitedBy: string; // Now stores the email of the inviter
   timestamp: number;
   status: 'pending' | 'accepted' | 'cancelled';
 }
