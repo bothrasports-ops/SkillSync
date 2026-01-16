@@ -7,9 +7,10 @@ interface HeaderProps {
   currentView: string;
   setView: (view: any) => void;
   onLogout: () => void;
+  pendingCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLogout }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLogout, pendingCount = 0 }) => {
   return (
     <header className="sticky top-0 z-40 glass border-b border-slate-200 px-6 py-4 flex justify-between items-center">
       <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
@@ -21,6 +22,14 @@ const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLo
 
       <div className="hidden md:flex items-center gap-6">
         <button onClick={() => setView('home')} className={`font-medium transition ${currentView === 'home' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>Discover</button>
+        <button onClick={() => setView('requests')} className={`font-medium transition relative ${currentView === 'requests' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>
+          Requests
+          {pendingCount > 0 && (
+            <span className="ml-1 bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              {pendingCount}
+            </span>
+          )}
+        </button>
         <button onClick={() => setView('sessions')} className={`font-medium transition ${currentView === 'sessions' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>Sessions</button>
         <button onClick={() => setView('invitations')} className={`font-medium transition ${currentView === 'invitations' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>Invite</button>
       </div>

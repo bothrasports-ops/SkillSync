@@ -6,6 +6,7 @@ import Header from './components/Header';
 import Home from './components/Home';
 import Profile from './components/Profile';
 import Sessions from './components/Sessions';
+import Requests from './components/Requests';
 import Invitations from './components/Invitations';
 import Login from './components/Login';
 
@@ -16,7 +17,7 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<SessionRequest[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'invitations'>('home');
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'requests' | 'invitations'>('home');
   const [userLocation, setUserLocation] = useState<Location | null>(null);
 
   const refreshState = useCallback(async (isInitial = false) => {
@@ -166,10 +167,14 @@ const App: React.FC = () => {
         return <Profile user={currentUser} onUpdate={handleUpdateProfile} />;
       case 'sessions':
         return <Sessions sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
+      case 'requests':
+        return <Requests sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
       case 'invitations':
         return <Invitations invitations={invitations} onInvite={handleInviteUser} onCancel={handleCancelInvite} isAdmin={currentUser.isAdmin} currentUser={currentUser} />;
     }
   };
+
+  const pendingRequestsCount = sessions.filter(s => s.providerId === currentUser.id && s.status === SessionStatus.PENDING).length;
 
   return (
     <div className="max-w-screen-xl mx-auto pb-24 md:pb-0">
@@ -178,6 +183,7 @@ const App: React.FC = () => {
         currentView={currentView}
         setView={setCurrentView}
         onLogout={handleLogout}
+        pendingCount={pendingRequestsCount}
       />
 
       {backgroundLoading && (
@@ -196,11 +202,16 @@ const App: React.FC = () => {
         <button onClick={() => setCurrentView('home')} className={`p-4 rounded-2xl transition ${currentView === 'home' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
             <i className="fa-solid fa-compass text-xl"></i>
         </button>
+        <button onClick={() => setCurrentView('requests')} className={`p-4 rounded-2xl transition relative ${currentView === 'requests' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
+            <i className="fa-solid fa-bell text-xl"></i>
+            {pendingRequestsCount > 0 && (
+                <span className="absolute top-2 right-2 w-4 h-4 bg-red-500 rounded-full text-[10px] flex items-center justify-center font-bold">
+                    {pendingRequestsCount}
+                </span>
+            )}
+        </button>
         <button onClick={() => setCurrentView('sessions')} className={`p-4 rounded-2xl transition ${currentView === 'sessions' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
             <i className="fa-solid fa-calendar-days text-xl"></i>
-        </button>
-        <button onClick={() => setCurrentView('invitations')} className={`p-4 rounded-2xl transition ${currentView === 'invitations' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
-            <i className="fa-solid fa-user-plus text-xl"></i>
         </button>
         <button onClick={() => setCurrentView('profile')} className={`p-4 rounded-2xl transition ${currentView === 'profile' ? 'bg-indigo-600' : 'hover:bg-white/10'}`}>
             <i className="fa-solid fa-user-astronaut text-xl"></i>

@@ -63,8 +63,44 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                 <i className="fa-solid fa-camera"></i>
             </button>
         </div>
-        <h2 className="text-2xl font-bold mb-1">{user.name}</h2>
-        <p className="text-slate-400 font-medium mb-6">{user.email}</p>
+
+        {isEditing ? (
+            <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                className="text-2xl font-bold text-center border-b-2 border-indigo-500 outline-none mb-2"
+                placeholder="Name"
+            />
+        ) : (
+            <h2 className="text-2xl font-bold mb-1">{user.name}</h2>
+        )}
+
+        <div className="flex flex-col items-center text-slate-400 font-medium mb-6">
+            {isEditing && user.isAdmin ? (
+                <div className="flex flex-col gap-2 items-center w-full">
+                    <input
+                        type="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                        className="text-sm border rounded-lg px-2 py-1 outline-none focus:border-indigo-500"
+                        placeholder="Email"
+                    />
+                    <input
+                        type="text"
+                        value={formData.phone}
+                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                        className="text-xs border rounded-lg px-2 py-1 outline-none focus:border-indigo-500"
+                        placeholder="Phone"
+                    />
+                </div>
+            ) : (
+                <>
+                    <span>{user.email}</span>
+                    {user.phone && <span className="text-xs">{user.phone}</span>}
+                </>
+            )}
+        </div>
 
         <div className="grid grid-cols-2 gap-4 w-full max-w-md">
             <div className="bg-slate-50 p-4 rounded-2xl text-center">
@@ -82,7 +118,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
         <div className="flex justify-between items-center">
             <h3 className="text-xl font-bold flex items-center gap-2">
                 <i className="fa-solid fa-user-pen text-indigo-500"></i>
-                Profile Details
+                Profile Configuration
             </h3>
             {!isEditing && (
                 <button onClick={() => setIsEditing(true)} className="px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition">
@@ -96,7 +132,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                 <label className="block text-sm font-bold text-slate-500 mb-2 uppercase tracking-wider">Bio & Introduction</label>
                 {isEditing ? (
                     <textarea
-                        className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500"
+                        className="w-full p-4 rounded-2xl border border-slate-200 focus:ring-2 focus:ring-indigo-500 outline-none"
                         rows={4}
                         value={formData.bio}
                         onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
@@ -112,11 +148,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                     <label className="text-sm font-bold text-slate-500 uppercase tracking-wider">Skills You Offer</label>
                     {isEditing && (
                         <div className="flex gap-2">
-                            <button
-                                onClick={handleSuggestSkills}
-                                disabled={isGenerating || !formData.bio}
-                                className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition disabled:opacity-50"
-                            >
+                            <button onClick={handleSuggestSkills} disabled={isGenerating || !formData.bio} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition disabled:opacity-50">
                                 {isGenerating ? 'Analyzing...' : 'Suggest Skills ✨'}
                             </button>
                             <button onClick={addSkill} className="text-xs font-bold text-indigo-600 hover:text-indigo-800 transition">
@@ -155,9 +187,6 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate }) => {
                             )}
                         </div>
                     ))}
-                    {(!isEditing && (!user.skills || user.skills.length === 0)) && (
-                        <p className="text-slate-400 text-sm text-center py-4 italic">Add skills to help others and earn hours!</p>
-                    )}
                 </div>
             </div>
 
