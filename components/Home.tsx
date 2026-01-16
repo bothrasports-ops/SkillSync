@@ -155,54 +155,70 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
 
       {/* Results Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredUsers.length > 0 ? filteredUsers.map(user => (
-          <div key={user.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition group">
-            <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                    <div className="flex items-center gap-3">
-                        <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-xl object-cover" />
-                        <div>
-                            <h3 className="font-bold text-lg group-hover:text-indigo-600 transition">{user.name}</h3>
-                            <div className="flex items-center text-xs text-slate-400 font-medium">
-                                <i className="fa-solid fa-star text-amber-400 mr-1"></i>
-                                {user.rating.toFixed(1)} ({user.reviewCount} reviews)
-                            </div>
-                        </div>
-                    </div>
-                    {userLocation && user.location && (
-                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-wider">
-                            {getDistanceLabel(calculateDistance(userLocation.lat, userLocation.lng, user.location.lat, user.location.lng))}
-                        </span>
-                    )}
-                </div>
+        {filteredUsers.length > 0 ? filteredUsers.map(user => {
+          const hasSkills = user.skills && user.skills.length > 0;
 
-                <p className="text-slate-600 text-sm line-clamp-2 mb-6 h-10">{user.bio || 'Sharing knowledge and building community.'}</p>
+          return (
+            <div key={user.id} className={`bg-white rounded-2xl border border-slate-200 shadow-sm transition group ${!hasSkills ? 'opacity-75' : 'hover:shadow-md'}`}>
+              <div className="p-6">
+                  <div className="flex items-start justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                          <img src={user.avatar} alt={user.name} className="w-14 h-14 rounded-xl object-cover" />
+                          <div>
+                              <h3 className="font-bold text-lg group-hover:text-indigo-600 transition">{user.name}</h3>
+                              <div className="flex items-center text-xs text-slate-400 font-medium">
+                                  <i className="fa-solid fa-star text-amber-400 mr-1"></i>
+                                  {user.rating.toFixed(1)} ({user.reviewCount} reviews)
+                              </div>
+                          </div>
+                      </div>
+                      {userLocation && user.location && (
+                          <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-full uppercase tracking-wider">
+                              {getDistanceLabel(calculateDistance(userLocation.lat, userLocation.lng, user.location.lat, user.location.lng))}
+                          </span>
+                      )}
+                  </div>
 
-                <div className="space-y-3">
-                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Offers Skills</span>
-                    <div className="flex flex-wrap gap-2">
-                        {user.skills.map(skill => (
-                            <button
-                                key={skill.id}
-                                onClick={() => setRequestModal({ user, skill })}
-                                className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-600 hover:text-white transition"
-                            >
-                                {skill.name}
-                            </button>
-                        ))}
-                    </div>
-                </div>
+                  <p className="text-slate-600 text-sm line-clamp-2 mb-6 h-10">{user.bio || 'Sharing knowledge and building community.'}</p>
+
+                  <div className="space-y-3">
+                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Offers Skills</span>
+                      <div className="flex flex-wrap gap-2 min-h-[2rem]">
+                          {hasSkills ? user.skills.map(skill => (
+                              <button
+                                  key={skill.id}
+                                  onClick={() => setRequestModal({ user, skill })}
+                                  className="px-3 py-1.5 bg-indigo-50 text-indigo-700 text-xs font-semibold rounded-lg hover:bg-indigo-600 hover:text-white transition"
+                              >
+                                  {skill.name}
+                              </button>
+                          )) : (
+                            <span className="text-xs text-slate-400 italic">No skills listed yet</span>
+                          )}
+                      </div>
+                  </div>
+              </div>
+              <div className="border-t border-slate-100 p-4 bg-slate-50/50 rounded-b-2xl">
+                  <button
+                      disabled={!hasSkills}
+                      onClick={() => hasSkills && setRequestModal({ user, skill: user.skills[0] })}
+                      className={`w-full py-2 border rounded-xl text-sm font-bold transition flex items-center justify-center gap-2 ${
+                        hasSkills
+                          ? 'bg-white border-slate-200 text-slate-700 hover:border-indigo-500 hover:text-indigo-600'
+                          : 'bg-slate-100 border-slate-100 text-slate-400 cursor-not-allowed opacity-60'
+                      }`}
+                  >
+                      {hasSkills ? 'Connect & Learn' : (
+                        <>
+                          <i className="fa-solid fa-lock text-[10px]"></i>
+                          No Skills Offered
+                        </>
+                      )}
+                  </button>
+              </div>
             </div>
-            <div className="border-t border-slate-100 p-4 bg-slate-50/50 rounded-b-2xl">
-                <button
-                    onClick={() => setRequestModal({ user, skill: user.skills[0] })}
-                    className="w-full py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700 hover:border-indigo-500 hover:text-indigo-600 transition"
-                >
-                    Connect & Learn
-                </button>
-            </div>
-          </div>
-        )) : (
+          );
+        }) : (
             <div className="col-span-full py-20 text-center">
                 <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
                     <i className="fa-solid fa-magnifying-glass text-slate-300 text-3xl"></i>
