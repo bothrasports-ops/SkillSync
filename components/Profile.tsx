@@ -125,7 +125,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
             <img
               src={isEditing ? formData.avatar : user.avatar}
               alt={user.name}
-              className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white rotate-2 transition-transform group-hover:rotate-0"
+              className="w-32 h-32 md:w-40 md:h-40 rounded-[2.5rem] object-cover shadow-2xl border-4 border-white transition-transform"
             />
 
             <input

@@ -73,7 +73,7 @@ const Chat: React.FC<ChatProps> = ({
   };
 
   return (
-    <div className="flex flex-col md:flex-row h-[calc(100vh-200px)] bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
+    <div className="flex flex-col md:flex-row min-h-[500px] h-[calc(100vh-180px)] bg-white rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden">
       {/* Sidebar: Chat List */}
       <div className={`w-full md:w-80 border-r border-slate-100 flex flex-col ${selectedUser ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-6 border-b border-slate-100 bg-slate-50/50">
