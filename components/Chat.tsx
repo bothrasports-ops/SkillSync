@@ -189,7 +189,7 @@ const Chat: React.FC<ChatProps> = ({
                           {isMe && (
                             <button
                               onClick={() => onDeleteMessage(msg.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-indigo-300 hover:text-white"
+                              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-indigo-300 hover:text-white"
                             >
                               <i className="fa-solid fa-trash-can text-[10px]"></i>
                             </button>
@@ -197,7 +197,7 @@ const Chat: React.FC<ChatProps> = ({
                           {!isMe && (
                             <button
                               onClick={() => onDeleteMessage(msg.id)}
-                              className="opacity-0 group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-500"
+                              className="opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity text-slate-300 hover:text-rose-500"
                             >
                               <i className="fa-solid fa-trash-can text-[10px]"></i>
                             </button>
