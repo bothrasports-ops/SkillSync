@@ -18,3 +18,29 @@ export const getDistanceLabel = (dist: number): string => {
   if (dist < 1) return 'Within 1 km';
   return `${dist.toFixed(1)} km away`;
 };
+
+/**
+ * Maps common locales to their international calling codes and flags
+ */
+const COUNTRY_MAP: Record<string, { code: string; flag: string; name: string }> = {
+  'US': { code: '+1', flag: '🇺🇸', name: 'USA' },
+  'GB': { code: '+44', flag: '🇬🇧', name: 'UK' },
+  'IN': { code: '+91', flag: '🇮🇳', name: 'India' },
+  'CA': { code: '+1', flag: '🇨🇦', name: 'Canada' },
+  'AU': { code: '+61', flag: '🇦🇺', name: 'Australia' },
+  'DE': { code: '+49', flag: '🇩🇪', name: 'Germany' },
+  'FR': { code: '+33', flag: '🇫🇷', name: 'France' },
+  'BR': { code: '+55', flag: '🇧🇷', name: 'Brazil' },
+  'JP': { code: '+81', flag: '🇯🇵', name: 'Japan' },
+  'SG': { code: '+65', flag: '🇸🇬', name: 'Singapore' },
+};
+
+export const getLocalCountryData = () => {
+  try {
+    const locale = new Intl.DateTimeFormat().resolvedOptions().locale;
+    const countryCode = locale.split('-')[1] || 'US';
+    return COUNTRY_MAP[countryCode] || COUNTRY_MAP['US'];
+  } catch (e) {
+    return COUNTRY_MAP['US'];
+  }
+};
