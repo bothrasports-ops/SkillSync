@@ -2,12 +2,13 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { User } from "../types";
 
-const API_KEY = process.env.API_KEY || '';
+// Refactored to use process.env.API_KEY directly and create instances per call as per guidelines.
 
 export const getSmartMatches = async (query: string, users: User[]): Promise<string[]> => {
-  if (!API_KEY) return [];
+  if (!process.env.API_KEY) return [];
 
-  const ai = new GoogleGenAI({ apiKey: API_KEY });
+  // Create a new GoogleGenAI instance right before making an API call.
+  const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
   const userContext = users.map(u => ({
     id: u.id,
     name: u.name,
@@ -27,6 +28,7 @@ export const getSmartMatches = async (query: string, users: User[]): Promise<str
       }
     });
 
+    // Access the text property directly.
     return JSON.parse(response.text || '[]');
   } catch (error) {
     console.error("Gemini Matching Error:", error);
@@ -35,8 +37,9 @@ export const getSmartMatches = async (query: string, users: User[]): Promise<str
 };
 
 export const getSkillSuggestion = async (userBio: string): Promise<string[]> => {
-    if (!API_KEY) return [];
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    if (!process.env.API_KEY) return [];
+    // Create a new GoogleGenAI instance right before making an API call.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
@@ -49,6 +52,7 @@ export const getSkillSuggestion = async (userBio: string): Promise<string[]> => 
                 }
             }
         });
+        // Access the text property directly.
         return JSON.parse(response.text || '[]');
     } catch (e) {
         return [];
@@ -56,21 +60,29 @@ export const getSkillSuggestion = async (userBio: string): Promise<string[]> => 
 };
 
 export const generateInviteEmail = async (inviterName: string, targetContact: string, appUrl: string): Promise<{subject: string, body: string}> => {
+    const isPhone = !targetContact.includes('@');
     const defaultData = {
-        subject: `Join me on TimeShare!`,
-        body: `Hi! ${inviterName} invited you to join TimeShare, a community where we exchange skills using time credits. Join us here: ${appUrl}`
+        subject: isPhone ? `TimeShare Invite` : `Join me on TimeShare!`,
+        body: isPhone
+            ? `Hi! ${inviterName} invited you to TimeShare. Join our skill-sharing hub here: ${appUrl}`
+            : `Hi! ${inviterName} invited you to join TimeShare, a community where we exchange skills using time credits. Join us here: ${appUrl}`
     };
 
-    if (!API_KEY) return defaultData;
+    if (!process.env.API_KEY) return defaultData;
 
-    const ai = new GoogleGenAI({ apiKey: API_KEY });
+    // Create a new GoogleGenAI instance right before making an API call.
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     try {
         const response = await ai.models.generateContent({
             model: "gemini-3-flash-preview",
-            contents: `Generate an invitation for 'TimeShare', a skill-sharing community where everyone gets 40 hours of credit to start.
-            The invitation is from ${inviterName} to ${targetContact}.
-            You MUST include this link for them to join: ${appUrl}.
-            Return a JSON object with 'subject' and 'body' fields. Keep the tone warm and professional. Make sure the link is naturally integrated into the body.`,
+            contents: `Generate an invitation for 'TimeShare', a skill-sharing community.
+            Inviter: ${inviterName}
+            Target Contact: ${targetContact}
+            Format: ${isPhone ? 'SMS (Short & Punchy)' : 'Email (Warm & Professional)'}
+            Join Link: ${appUrl}
+
+            Return a JSON object with 'subject' and 'body' fields.
+            If it's an SMS, the subject is just a short title, but the body must be under 160 characters if possible.`,
             config: {
                 responseMimeType: "application/json",
                 responseSchema: {
@@ -83,6 +95,7 @@ export const generateInviteEmail = async (inviterName: string, targetContact: st
                 }
             }
         });
+        // Access the text property directly.
         return JSON.parse(response.text || JSON.stringify(defaultData));
     } catch (e) {
         return defaultData;

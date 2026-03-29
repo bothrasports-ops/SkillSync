@@ -8,9 +8,10 @@ interface HeaderProps {
   setView: (view: any) => void;
   onLogout: () => void;
   pendingCount?: number;
+  unreadMessagesCount?: number;
 }
 
-const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLogout, pendingCount = 0 }) => {
+const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLogout, pendingCount = 0, unreadMessagesCount = 0 }) => {
   return (
     <header className="sticky top-0 z-40 glass border-b border-slate-200 px-6 py-4 flex justify-between items-center">
       <div className="flex items-center gap-2 cursor-pointer" onClick={() => setView('home')}>
@@ -31,18 +32,29 @@ const Header: React.FC<HeaderProps> = ({ currentUser, currentView, setView, onLo
           )}
         </button>
         <button onClick={() => setView('sessions')} className={`font-medium transition ${currentView === 'sessions' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>Sessions</button>
+        <button onClick={() => setView('chat')} className={`font-medium transition relative ${currentView === 'chat' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>
+          Messages
+          {unreadMessagesCount > 0 && (
+            <span className="ml-1 bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded-full font-bold">
+              {unreadMessagesCount}
+            </span>
+          )}
+        </button>
         <button onClick={() => setView('invitations')} className={`font-medium transition ${currentView === 'invitations' ? 'text-indigo-600' : 'text-slate-500 hover:text-indigo-600'}`}>Invite</button>
       </div>
 
       {currentUser ? (
         <div className="flex items-center gap-4">
+          {currentUser.isAdmin && (
+            <span className="hidden sm:inline-flex px-2 py-0.5 bg-slate-900 text-white text-[9px] font-black rounded uppercase tracking-widest border border-white/20">Admin</span>
+          )}
           <div className="hidden sm:flex flex-col items-end mr-2">
             <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Balance</span>
             <span className="text-sm font-bold text-indigo-600">{currentUser.balanceHours.toFixed(1)} hrs</span>
           </div>
           <button
             onClick={() => setView('profile')}
-            className="w-10 h-10 rounded-full border-2 border-indigo-100 overflow-hidden hover:border-indigo-500 transition"
+            className="w-10 h-10 rounded-full border-2 border-indigo-100 overflow-hidden hover:border-indigo-500 transition shadow-sm"
           >
             <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
           </button>

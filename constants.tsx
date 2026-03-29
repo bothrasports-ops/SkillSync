@@ -25,6 +25,7 @@ export const MOCK_USERS: User[] = [
     name: 'Alex Admin',
     email: 'admin@timeshare.com',
     phone: '1234567890',
+    password: 'password123',
     bio: 'Founding member and community manager.',
     skills: [{ id: 's1', name: 'Community Management', category: 'Other', description: 'Building great tribes.' }],
     balanceHours: 40,
@@ -32,6 +33,7 @@ export const MOCK_USERS: User[] = [
     reviewCount: 0,
     isAdmin: true,
     isInvited: true,
+    isPhoneVerified: true,
     avatar: 'https://picsum.photos/seed/admin/200',
     location: { lat: 40.7128, lng: -74.0060 }
   },
@@ -40,6 +42,7 @@ export const MOCK_USERS: User[] = [
     name: 'Sarah Chen',
     email: 'sarah@example.com',
     phone: '0987654321',
+    password: 'password123',
     bio: 'Full stack developer and sushi enthusiast.',
     skills: [
         { id: 's2', name: 'React Development', category: 'Programming', description: 'Building modern web apps.' },
@@ -50,6 +53,7 @@ export const MOCK_USERS: User[] = [
     reviewCount: 12,
     isAdmin: false,
     isInvited: true,
+    isPhoneVerified: true,
     avatar: 'https://picsum.photos/seed/sarah/200',
     location: { lat: 40.7300, lng: -73.9352 }
   },
@@ -58,6 +62,7 @@ export const MOCK_USERS: User[] = [
     name: 'Marcus Bell',
     email: 'marcus@example.com',
     phone: '5556667777',
+    password: 'password123',
     bio: 'Professional photographer and guitar teacher.',
     skills: [
         { id: 's4', name: 'Photography Basics', category: 'Design', description: 'Master your DSLR.' },
@@ -68,6 +73,7 @@ export const MOCK_USERS: User[] = [
     reviewCount: 8,
     isAdmin: false,
     isInvited: true,
+    isPhoneVerified: false,
     avatar: 'https://picsum.photos/seed/marcus/200',
     location: { lat: 40.6782, lng: -73.9442 }
   }

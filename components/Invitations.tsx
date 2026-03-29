@@ -1,7 +1,8 @@
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Invitation, User } from '../types';
 import { generateInviteEmail } from '../services/geminiService';
+import { getLocalCountryData } from '../utils/geo';
 
 interface InvitationsProps {
   invitations: Invitation[];
@@ -16,12 +17,40 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
   const [isDrafting, setIsDrafting] = useState(false);
   const [showDraft, setShowDraft] = useState<{ contact: string, subject: string, message: string } | null>(null);
 
+  const localData = useMemo(() => getLocalCountryData(), []);
+
+  // Smart contact detection
+  const contactInfo = useMemo(() => {
+    const trimmed = target.trim();
+    if (!trimmed) return { type: 'none' };
+
+    if (trimmed.includes('@')) return { type: 'email', value: trimmed };
+
+    // Check if it's digit-heavy (phone)
+    const digitsOnly = trimmed.replace(/[^0-9+]/g, '');
+    if (digitsOnly.length >= 3 && /^[0-9+]/.test(digitsOnly)) {
+      const hasPlus = digitsOnly.startsWith('+');
+      const formatted = hasPlus ? digitsOnly : `${localData.code}${digitsOnly}`;
+      return {
+        type: 'phone',
+        value: formatted,
+        isLocal: !hasPlus,
+        flag: localData.flag,
+        countryName: localData.name
+      };
+    }
+
+    return { type: 'unknown', value: trimmed };
+  }, [target, localData]);
+
   const handleStartInvite = async () => {
     if (!target) return;
     setIsDrafting(true);
     try {
-        const result = await generateInviteEmail(currentUser.name, target, window.location.origin);
-        setShowDraft({ contact: target, subject: result.subject, message: result.body });
+        // Use the smart-detected value (with country code if needed)
+        const finalContact = contactInfo.type === 'phone' ? (contactInfo as any).value : target.trim();
+        const result = await generateInviteEmail(currentUser.name, finalContact, window.location.origin);
+        setShowDraft({ contact: finalContact, subject: result.subject, message: result.body });
     } catch (e) {
         console.error(e);
     } finally {
@@ -44,11 +73,17 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
     }
   };
 
-  const handleSendEmail = () => {
+  const handleDirectAction = () => {
     if (!showDraft) return;
-    const subject = encodeURIComponent(showDraft.subject);
     const body = encodeURIComponent(showDraft.message);
-    window.location.href = `mailto:${showDraft.contact}?subject=${subject}&body=${body}`;
+
+    if (showDraft.contact.includes('@')) {
+        const subject = encodeURIComponent(showDraft.subject);
+        window.location.href = `mailto:${showDraft.contact}?subject=${subject}&body=${body}`;
+    } else {
+        // Handle as phone/SMS
+        window.location.href = `sms:${showDraft.contact}?body=${body}`;
+    }
   };
 
   const handleShare = async () => {
@@ -69,7 +104,6 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
   };
 
   const canCancel = (inv: Invitation) => {
-    // Can cancel if invited by current user (matched by email) or if current user is admin
     return (inv.invitedBy === currentUser.email || currentUser.isAdmin) && inv.status === 'pending';
   };
 
@@ -85,24 +119,45 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
             TimeShare is an exclusive community. {isAdmin ? 'Invite new members to join the peer-to-peer revolution.' : 'Invite your trusted friends to share their skills.'}
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-4 p-2 bg-slate-50 rounded-[2rem] border border-slate-100">
-            <input
-                type="text"
-                placeholder="Email or Phone Number"
-                className="flex-1 px-6 py-4 rounded-2xl bg-transparent focus:outline-none text-slate-700 font-medium"
-                value={target}
-                onChange={(e) => setTarget(e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && handleStartInvite()}
-            />
-            <button
-                onClick={handleStartInvite}
-                disabled={isDrafting || !target}
-                className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:bg-slate-800 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-                {isDrafting ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
-                Draft Invite
-            </button>
+        <div className="relative group">
+            <div className="flex flex-col sm:flex-row gap-4 p-2 bg-slate-50 rounded-[2rem] border border-slate-100 transition-all focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50">
+                <div className="flex-1 flex items-center px-6">
+                    <i className={`text-slate-400 mr-3 transition-colors ${
+                        contactInfo.type === 'email' ? 'fa-solid fa-envelope text-indigo-500' :
+                        contactInfo.type === 'phone' ? 'fa-solid fa-phone text-indigo-500' :
+                        'fa-solid fa-user-plus'
+                    }`}></i>
+                    <input
+                        type="text"
+                        placeholder="Email or Phone Number"
+                        className="flex-1 py-4 bg-transparent focus:outline-none text-slate-700 font-bold placeholder:font-medium"
+                        value={target}
+                        onChange={(e) => setTarget(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleStartInvite()}
+                    />
+                </div>
+                <button
+                    onClick={handleStartInvite}
+                    disabled={isDrafting || !target}
+                    className="bg-slate-900 text-white px-8 py-4 rounded-2xl font-bold shadow-xl hover:bg-indigo-600 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                    {isDrafting ? <i className="fa-solid fa-circle-notch animate-spin"></i> : <i className="fa-solid fa-wand-magic-sparkles"></i>}
+                    Draft Invite
+                </button>
+            </div>
+
+            {/* Smart Detection Badge */}
+            {contactInfo.type === 'phone' && (
+                <div className="absolute -top-3 right-6 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-sm flex items-center gap-2 animate-in slide-in-from-top-2">
+                    <span className="text-sm">{(contactInfo as any).flag}</span>
+                    <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">
+                        {(contactInfo as any).isLocal ? `Assumed ${(contactInfo as any).countryName} format` : `International Format`}
+                    </span>
+                    <span className="text-indigo-600 font-bold text-xs">{(contactInfo as any).value}</span>
+                </div>
+            )}
         </div>
+
         <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-6">
             <i className="fa-solid fa-shield-halved mr-1"></i>
             Member Verification Required
@@ -122,7 +177,7 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
                 <div key={inv.id} className="bg-white p-6 rounded-3xl border border-slate-200 flex justify-between items-center group hover:border-indigo-300 transition-all shadow-sm">
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
-                            <i className="fa-solid fa-user-tag text-xl"></i>
+                            <i className={inv.emailOrPhone.includes('@') ? "fa-solid fa-envelope-open-text text-xl" : "fa-solid fa-comment-sms text-xl"}></i>
                         </div>
                         <div>
                             <p className="font-bold text-slate-800">{inv.emailOrPhone}</p>
@@ -167,7 +222,7 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
       {/* Review Invite Modal */}
       {showDraft && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass animate-in fade-in duration-300">
-              <div className="bg-white rounded-[2.5rem] w-full max-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
+              <div className="bg-white rounded-[2.5rem] w-full max-w-lg shadow-2xl border border-slate-100 overflow-hidden flex flex-col max-h-[90vh]">
                   <div className="bg-slate-900 p-8 text-white">
                       <div className="flex justify-between items-start">
                           <div>
@@ -181,12 +236,14 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
                   </div>
 
                   <div className="p-8 flex-1 overflow-y-auto space-y-6">
-                      <div className="space-y-2">
-                          <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subject</label>
-                          <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 font-bold text-slate-700 text-sm">
-                              {showDraft.subject}
-                          </div>
-                      </div>
+                      {showDraft.contact.includes('@') && (
+                        <div className="space-y-2">
+                            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Subject</label>
+                            <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 font-bold text-slate-700 text-sm">
+                                {showDraft.subject}
+                            </div>
+                        </div>
+                      )}
 
                       <div className="space-y-2">
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Message Body</label>
@@ -199,11 +256,20 @@ const Invitations: React.FC<InvitationsProps> = ({ invitations, onInvite, onCanc
 
                       <div className="grid grid-cols-2 gap-3">
                           <button
-                            onClick={handleSendEmail}
+                            onClick={handleDirectAction}
                             className="bg-white border border-slate-200 text-slate-700 py-3 rounded-2xl text-xs font-bold flex items-center justify-center gap-2 hover:bg-slate-50 transition active:scale-95"
                           >
-                            <i className="fa-solid fa-envelope text-indigo-500"></i>
-                            Open Email App
+                            {showDraft.contact.includes('@') ? (
+                                <>
+                                    <i className="fa-solid fa-envelope text-indigo-500"></i>
+                                    Open Email App
+                                </>
+                            ) : (
+                                <>
+                                    <i className="fa-solid fa-comment-sms text-indigo-500"></i>
+                                    Send via SMS
+                                </>
+                            )}
                           </button>
                           <button
                             onClick={handleShare}

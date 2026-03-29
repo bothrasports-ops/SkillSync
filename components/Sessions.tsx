@@ -152,7 +152,7 @@ const Sessions: React.FC<SessionsProps> = ({ sessions, currentUser, users, onUpd
                     {rating >= 5 ? (
                         <p className="text-sm font-bold text-indigo-700 leading-snug">✨ Elite Rating! Mentor receives <span className="bg-indigo-600 text-white px-2 py-0.5 rounded-lg ml-1 font-black">+1.5h</span> bonus credit.</p>
                     ) : rating >= 4 ? (
-                        <p className="text-sm font-bold text-indigo-700 leading-snug">💎 High Quality! Mentor receives <span className="bg-indigo-400 text-white px-2 py-0.5 rounded-lg ml-1 font-black">+1.0h</span> bonus credit.</p>
+                        <p className="text-sm font-bold text-indigo-700 leading-snug">💎 High Quality! Mentor receives <span className="bg-indigo-400 text-white px-2 py-0.5 rounded-lg ml-1 font-black">+4.0h</span> bonus credit.</p>
                     ) : (
                         <p className="text-xs font-bold text-slate-400 italic">No community bonus awarded for mid-tier ratings.</p>
                     )}

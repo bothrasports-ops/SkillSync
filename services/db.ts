@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { User, SessionRequest, Invitation, AppState, SessionStatus, Skill } from '../types';
+import { User, SessionRequest, Invitation, AppState, SessionStatus, Skill, Message } from '../types';
 import { INITIAL_HOURS } from '../constants';
 
 const supabaseUrl = process.env.SUPABASE_URL || 'https://qbmeqqczjgfynpbguctx.supabase.co';
@@ -11,19 +11,16 @@ export const db = {
   supabase,
 
   async init(): Promise<AppState> {
-    const [pRes, sRes, iRes] = await Promise.all([
+    const [pRes, sRes, iRes, mRes] = await Promise.all([
       supabase.from('profiles').select('*, skills(*)'),
       supabase.from('sessions').select('*').order('timestamp', { ascending: false }),
-      supabase.from('invitations').select('*').order('timestamp', { ascending: false })
+      supabase.from('invitations').select('*').order('timestamp', { ascending: false }),
+      supabase.from('messages').select('*').order('timestamp', { ascending: true })
     ]);
 
     if (pRes.error) console.error("Error fetching profiles:", pRes.error);
-    if (sRes.error) console.error("Error fetching sessions:", sRes.error);
-    if (iRes.error) console.error("Error fetching invitations:", iRes.error);
-
     const users: User[] = (pRes.data || []).map(p => this.mapProfile(p));
     const sessions: SessionRequest[] = (sRes.data || []).map(s => this.mapSession(s));
-
     const invitations: Invitation[] = (iRes.data || []).map(i => ({
       id: String(i.id),
       emailOrPhone: i.email_or_phone,
@@ -31,13 +28,16 @@ export const db = {
       timestamp: i.timestamp ? new Date(i.timestamp).getTime() : Date.now(),
       status: i.status as 'pending' | 'accepted' | 'cancelled'
     }));
+    const messages: Message[] = (mRes.data || []).map(m => ({
+      id: String(m.id),
+      senderId: String(m.sender_id),
+      receiverId: String(m.receiver_id),
+      text: String(m.text),
+      timestamp: new Date(m.timestamp).getTime(),
+      read: Boolean(m.read)
+    }));
 
-    return {
-      currentUser: null,
-      users,
-      sessions,
-      invitations
-    };
+    return { currentUser: null, users, sessions, invitations, messages };
   },
 
   mapSession(s: any): SessionRequest {
@@ -56,21 +56,23 @@ export const db = {
     };
   },
 
-  async checkAccess(email: string): Promise<{ status: 'existing' | 'invited' | 'denied', profile?: User }> {
-    const trimmedEmail = email.trim().toLowerCase();
+  async checkAccess(identifier: string): Promise<{ status: 'existing' | 'invited' | 'denied', profile?: User }> {
+    const term = identifier.trim().toLowerCase();
 
+    // Check for profile using either email or phone
     const { data: profile } = await supabase
         .from('profiles')
         .select('*, skills(*)')
-        .eq('email', trimmedEmail)
+        .or(`email.eq.${term},phone.eq.${term}`)
         .maybeSingle();
 
     if (profile) return { status: 'existing', profile: this.mapProfile(profile) };
 
+    // Check for invitation
     const { data: invite } = await supabase
         .from('invitations')
         .select('*')
-        .eq('email_or_phone', trimmedEmail)
+        .eq('email_or_phone', term)
         .eq('status', 'pending')
         .maybeSingle();
 
@@ -79,31 +81,49 @@ export const db = {
     return { status: 'denied' };
   },
 
-  async signUp(email: string, data: { name: string, phone: string, bio: string }): Promise<User> {
-    const trimmedEmail = email.trim().toLowerCase();
+  async signUp(identifier: string, data: { name: string, phone: string, bio: string, isVerified?: boolean }): Promise<User> {
+    const isEmail = identifier.includes('@');
+    const email = isEmail ? identifier.trim().toLowerCase() : `${data.phone}@guest.local`;
     const userId = Math.random().toString(36).substr(2, 9);
 
+    // Check for existing duplicates
+    const { data: existing } = await supabase
+        .from('profiles')
+        .select('id')
+        .or(`email.eq.${email},phone.eq.${data.phone}`)
+        .maybeSingle();
+
+    if (existing) {
+        throw new Error("Account already exists with this email or phone.");
+    }
+
+    // Insert new profile
     const { data: newProfile, error: sError } = await supabase
         .from('profiles')
         .insert({
             id: userId,
             name: data.name,
-            email: trimmedEmail,
+            email: email,
             phone: data.phone,
             bio: data.bio,
             balance_hours: INITIAL_HOURS,
-            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${trimmedEmail}`
+            is_phone_verified: !!data.isVerified,
+            avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${email}`
         })
-        .select('*, skills(*)')
+        .select() // Use simple select on insert
         .single();
 
-    if (sError) throw sError;
+    if (sError) {
+        console.error("Supabase Error Object:", sError);
+        throw new Error(sError.message || "Database insert failed");
+    }
 
+    // Mark invitation as accepted
     await supabase.from('invitations')
         .update({ status: 'accepted' })
-        .eq('email_or_phone', trimmedEmail);
+        .eq('email_or_phone', identifier.trim().toLowerCase());
 
-    return this.mapProfile(newProfile);
+    return this.mapProfile({ ...newProfile, skills: [] });
   },
 
   mapProfile(p: any): User {
@@ -112,6 +132,7 @@ export const db = {
       name: String(p.name),
       email: String(p.email || ''),
       phone: String(p.phone || ''),
+      password: p.password,
       bio: String(p.bio || ''),
       balanceHours: Number(p.balance_hours),
       rating: Number(p.rating || 5),
@@ -119,6 +140,7 @@ export const db = {
       isAdmin: Boolean(p.is_admin),
       avatar: String(p.avatar),
       isInvited: true,
+      isPhoneVerified: Boolean(p.is_phone_verified),
       location: p.location_lat ? { lat: Number(p.location_lat), lng: Number(p.location_lng) } : undefined,
       skills: p.skills || []
     };
@@ -129,9 +151,11 @@ export const db = {
     if (updates.name !== undefined) dbUpdates.name = updates.name;
     if (updates.email !== undefined) dbUpdates.email = updates.email.toLowerCase();
     if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
+    if (updates.password !== undefined) dbUpdates.password = updates.password;
     if (updates.bio !== undefined) dbUpdates.bio = updates.bio;
     if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
     if (updates.balanceHours !== undefined) dbUpdates.balance_hours = Number(updates.balanceHours);
+    if (updates.isPhoneVerified !== undefined) dbUpdates.is_phone_verified = Boolean(updates.isPhoneVerified);
 
     const { data, error: uError } = await supabase
       .from('profiles')
@@ -160,7 +184,7 @@ export const db = {
   },
 
   async createSession(request: SessionRequest): Promise<void> {
-    const sessionToInsert = {
+    const { error: iError } = await supabase.from('sessions').insert({
       requester_id: String(request.requesterId),
       provider_id: String(request.providerId),
       skill_id: String(request.skillId),
@@ -169,34 +193,12 @@ export const db = {
       status: String(request.status),
       timestamp: new Date(request.timestamp).toISOString(),
       scheduled_at: request.scheduledAt ? new Date(request.scheduledAt).toISOString() : null
-    };
+    });
+    if (iError) throw iError;
 
-    const { error: iError } = await supabase.from('sessions').insert(sessionToInsert);
-
-    if (iError) {
-      console.error("Supabase Session Insert Details:", {
-        error: iError,
-        dataSent: sessionToInsert
-      });
-      // Friendly message for Foreign Key errors
-      if (iError.code === '23503') {
-          throw new Error("One of the users involved in this request does not exist in the database profiles table.");
-      }
-      throw new Error(iError.message || "Database insert failed. Check your console for details.");
-    }
-
-    // Deduct Balance
-    const { data: profile } = await supabase
-        .from('profiles')
-        .select('id, balance_hours')
-        .eq('id', request.requesterId)
-        .single();
-
+    const { data: profile } = await supabase.from('profiles').select('id, balance_hours').eq('id', request.requesterId).single();
     if (profile) {
-        await supabase
-            .from('profiles')
-            .update({ balance_hours: Number(profile.balance_hours) - Number(request.durationHours) })
-            .eq('id', request.requesterId);
+        await supabase.from('profiles').update({ balance_hours: Number(profile.balance_hours) - Number(request.durationHours) }).eq('id', request.requesterId);
     }
   },
 
@@ -211,39 +213,69 @@ export const db = {
       const { data: provider, error: pError } = await supabase.from('profiles').select('*').eq('id', session.provider_id).single();
       if (pError || !provider) throw new Error("Provider not found");
 
-      let bonus = 0;
-      if (rating >= 5.0) bonus = 1.5;
-      else if (rating >= 4.0) bonus = 1.0;
-
+      let bonus = rating >= 5.0 ? 1.5 : (rating >= 4.0 ? 1.0 : 0);
       const totalEarned = Number(session.duration_hours) + bonus;
-      const newReviewCount = Number(provider.review_count) + 1;
-      const newRating = ((Number(provider.rating) * Number(provider.review_count)) + Number(rating)) / newReviewCount;
+      const newReviewCount = Number(provider.review_count || 0) + 1;
+      const oldRatingSum = Number(provider.rating || 5) * Number(provider.review_count || 0);
+      const newRating = (oldRatingSum + rating) / newReviewCount;
 
       await supabase.from('profiles').update({
           balance_hours: Number(provider.balance_hours) + totalEarned,
           rating: newRating,
           review_count: newReviewCount
       }).eq('id', session.provider_id);
-
-    } else if (status === SessionStatus.CANCELLED) {
-      const { data: requester } = await supabase.from('profiles').select('id, balance_hours').eq('id', session.requester_id).single();
-      if (requester) {
-        await supabase.from('profiles').update({ balance_hours: Number(requester.balance_hours) + Number(session.duration_hours) }).eq('id', session.requester_id);
-      }
     }
   },
 
-  async inviteUser(invitation: Invitation): Promise<void> {
-    await supabase.from('invitations').insert({
-      id: String(invitation.id),
-      email_or_phone: String(invitation.emailOrPhone).toLowerCase(),
-      invited_by: String(invitation.invitedBy).toLowerCase(),
-      timestamp: new Date(invitation.timestamp).toISOString(),
-      status: String(invitation.status)
+  async inviteUser(invite: Invitation): Promise<void> {
+    const { error } = await supabase.from('invitations').insert({
+        id: invite.id,
+        email_or_phone: invite.emailOrPhone,
+        invited_by: invite.invitedBy,
+        timestamp: new Date(invite.timestamp).toISOString(),
+        status: invite.status
     });
+    if (error) throw error;
   },
 
   async cancelInvite(id: string): Promise<void> {
-    await supabase.from('invitations').update({ status: 'cancelled' }).eq('id', id);
+    const { error } = await supabase.from('invitations').update({ status: 'cancelled' }).eq('id', id);
+    if (error) throw error;
+  },
+
+  async sendMessage(senderId: string, receiverId: string, text: string): Promise<Message> {
+    const { data, error } = await supabase.from('messages').insert({
+      sender_id: senderId,
+      receiver_id: receiverId,
+      text: text,
+      timestamp: new Date().toISOString(),
+      read: false
+    }).select().single();
+
+    if (error) throw error;
+    return {
+      id: String(data.id),
+      senderId: String(data.sender_id),
+      receiverId: String(data.receiver_id),
+      text: String(data.text),
+      timestamp: new Date(data.timestamp).getTime(),
+      read: Boolean(data.read)
+    };
+  },
+
+  async markMessageAsRead(messageId: string): Promise<void> {
+    await supabase.from('messages').update({ read: true }).eq('id', messageId);
+  },
+
+  async deleteMessage(messageId: string): Promise<void> {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+    if (error) throw error;
+  },
+
+  async deleteChat(userId1: string, userId2: string): Promise<void> {
+    const { error } = await supabase.from('messages')
+      .delete()
+      .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`);
+    if (error) throw error;
   }
 };

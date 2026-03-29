@@ -1,7 +1,9 @@
+
 import React, { useState, useRef } from 'react';
 import { User, Skill } from '../types';
 import { CATEGORIES, PREDEFINED_SKILLS } from '../constants';
 import { getSkillSuggestion } from '../services/geminiService';
+import { db } from '../services/db';
 
 interface ProfileProps {
   user: User;
@@ -13,6 +15,8 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<User>>(user);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [otpValue, setOtpValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleSuggestSkills = async () => {
@@ -100,6 +104,17 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
     fileInputRef.current?.click();
   };
 
+  const handleVerifyIdentity = () => {
+      if (otpValue === '1234') {
+          onUpdate({ isPhoneVerified: true });
+          setIsVerifying(false);
+          setOtpValue('');
+          alert("Phone verified successfully!");
+      } else {
+          alert("Invalid code. Try '1234'.");
+      }
+  };
+
   return (
     <div className="max-w-4xl mx-auto space-y-8 animate-slide-up pb-20">
       {/* Profile Header Card */}
@@ -157,8 +172,26 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                 </div>
             ) : (
                 <>
-                    <h2 className="text-4xl font-black text-slate-900 mb-2">{user.name}</h2>
-                    <p className="text-slate-400 font-medium tracking-wide">{user.email}</p>
+                    <h2 className="text-4xl font-black text-slate-900 mb-2 flex items-center justify-center gap-3">
+                        {user.name}
+                        {user.isPhoneVerified && (
+                            <i className="fa-solid fa-circle-check text-indigo-500 text-xl" title="Verified Member"></i>
+                        )}
+                    </h2>
+                    <div className="flex flex-col items-center gap-2">
+                        <p className="text-slate-400 font-medium tracking-wide">{user.email}</p>
+                        <div className="flex items-center gap-2">
+                            <p className="text-slate-400 text-sm">{user.phone}</p>
+                            {!user.isPhoneVerified && !isEditing && (
+                                <button
+                                    onClick={() => setIsVerifying(true)}
+                                    className="text-[9px] font-black uppercase tracking-widest bg-amber-50 text-amber-600 px-2 py-0.5 rounded border border-amber-100 hover:bg-amber-100 transition animate-pulse"
+                                >
+                                    Verify Now
+                                </button>
+                            )}
+                        </div>
+                    </div>
                 </>
             )}
         </div>
@@ -174,6 +207,44 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
             </div>
         </div>
       </div>
+
+      {/* Verification Modal */}
+      {isVerifying && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass animate-in fade-in duration-300">
+              <div className="bg-white rounded-[2.5rem] w-full max-w-sm shadow-2xl p-10 space-y-8 animate-in zoom-in duration-300 border border-slate-100">
+                  <div className="text-center space-y-2">
+                    <div className="w-16 h-16 bg-amber-50 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-4">
+                        <i className="fa-solid fa-shield-halved text-2xl"></i>
+                    </div>
+                    <h3 className="text-2xl font-black text-slate-800">Phone Verification</h3>
+                    <p className="text-slate-500 text-sm">Enter the code sent to your mobile device.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <input
+                        type="text"
+                        maxLength={4}
+                        placeholder="----"
+                        className="w-full text-center text-3xl font-black py-4 bg-slate-50 border-2 border-transparent focus:border-indigo-500 rounded-2xl outline-none tracking-[0.5em]"
+                        value={otpValue}
+                        onChange={(e) => setOtpValue(e.target.value)}
+                    />
+                    <button
+                        onClick={handleVerifyIdentity}
+                        className="w-full bg-slate-900 text-white py-4 rounded-2xl font-black shadow-lg hover:bg-indigo-600 transition active:scale-95"
+                    >
+                        Confirm Code
+                    </button>
+                    <button
+                        onClick={() => setIsVerifying(false)}
+                        className="w-full text-slate-400 font-bold text-xs uppercase tracking-widest hover:text-slate-600"
+                    >
+                        Cancel
+                    </button>
+                  </div>
+              </div>
+          </div>
+      )}
 
       {/* Main Content Section */}
       <div className="bg-white rounded-[2.5rem] border border-slate-200 shadow-sm p-8 md:p-12 space-y-12">

@@ -10,9 +10,10 @@ interface HomeProps {
   currentUser: User;
   onRequestSession: (providerId: string, skill: Skill, duration: number, scheduledAt?: number) => void;
   userLocation: Location | null;
+  onOpenChat: (userId: string) => void;
 }
 
-const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userLocation }) => {
+const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userLocation, onOpenChat }) => {
   const [search, setSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [maxDistance, setMaxDistance] = useState<number | 'Any'>('Any');
@@ -202,11 +203,18 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
                       </div>
                   </div>
               </div>
-              <div className="p-6 bg-slate-50/50 border-t border-slate-100 mt-auto">
+              <div className="p-6 bg-slate-50/50 border-t border-slate-100 mt-auto flex gap-3">
+                  <button
+                      onClick={() => onOpenChat(user.id)}
+                      className="w-14 h-14 rounded-2xl bg-white border border-slate-200 text-slate-400 flex items-center justify-center hover:text-indigo-600 hover:border-indigo-500 transition-all shadow-sm active:scale-95"
+                      title="Message User"
+                  >
+                      <i className="fa-solid fa-message"></i>
+                  </button>
                   <button
                       disabled={!hasSkills}
                       onClick={() => hasSkills && setRequestModal({ user, skill: user.skills[0] })}
-                      className={`w-full py-4 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-2 ${
+                      className={`flex-1 py-4 rounded-2xl text-sm font-black transition-all flex items-center justify-center gap-2 ${
                         hasSkills
                           ? 'bg-slate-900 text-white hover:bg-indigo-600 shadow-lg shadow-slate-100 active:scale-95'
                           : 'bg-slate-200 text-slate-400 cursor-not-allowed border border-slate-200'
@@ -240,14 +248,28 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
 
       {/* Booking Pop-up Modal */}
       {requestModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 glass animate-in fade-in duration-300">
-              <div className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl animate-in zoom-in duration-300 overflow-hidden border border-slate-100">
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm animate-in fade-in duration-300"
+            onClick={() => setRequestModal(null)}
+          >
+              <div
+                className="bg-white rounded-[3rem] w-full max-w-md shadow-2xl animate-in zoom-in duration-300 overflow-hidden border border-slate-100"
+                onClick={(e) => e.stopPropagation()}
+              >
                   <div className="bg-indigo-600 p-8 text-white relative">
                       <div className="relative z-10">
                         <h3 className="text-2xl font-black tracking-tight">Schedule Session</h3>
                         <p className="text-indigo-100 text-sm font-medium mt-1">Learning {requestModal.skill.name} from {requestModal.user.name}</p>
+                        <div className="mt-2 flex items-center gap-2 text-indigo-200 text-xs font-bold">
+                            <i className="fa-solid fa-phone"></i>
+                            <span>Contact: {requestModal.user.phone}</span>
+                        </div>
                       </div>
-                      <button onClick={() => setRequestModal(null)} className="absolute top-8 right-8 text-white/60 hover:text-white transition-colors p-2">
+                      <button
+                        onClick={() => setRequestModal(null)}
+                        className="absolute top-6 right-6 text-white/80 hover:text-white transition-all p-2 hover:bg-white/10 rounded-full z-20"
+                        aria-label="Close modal"
+                      >
                         <i className="fa-solid fa-xmark text-2xl"></i>
                       </button>
                   </div>
@@ -295,13 +317,25 @@ const Home: React.FC<HomeProps> = ({ users, currentUser, onRequestSession, userL
                           </p>
                       </div>
 
-                      <button
-                        onClick={handleSendRequest}
-                        className="w-full bg-slate-900 text-white py-5 rounded-3xl font-black shadow-xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"
-                      >
-                        <i className="fa-solid fa-paper-plane text-xs"></i>
-                        Send Booking Request
-                      </button>
+                      <div className="flex gap-4">
+                        <button
+                          onClick={() => {
+                            onOpenChat(requestModal.user.id);
+                            setRequestModal(null);
+                          }}
+                          className="flex-1 bg-white border-2 border-slate-100 text-slate-600 py-5 rounded-3xl font-black hover:border-indigo-500 hover:text-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                          <i className="fa-solid fa-message text-xs"></i>
+                          Message
+                        </button>
+                        <button
+                          onClick={handleSendRequest}
+                          className="flex-[2] bg-slate-900 text-white py-5 rounded-3xl font-black shadow-xl hover:bg-indigo-600 transition-all active:scale-95 flex items-center justify-center gap-3"
+                        >
+                          <i className="fa-solid fa-paper-plane text-xs"></i>
+                          Book Now
+                        </button>
+                      </div>
                   </div>
               </div>
           </div>

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { User, SessionRequest, SessionStatus, Skill, Invitation, Location } from './types';
-import { db } from './services/db';
+import { User, SessionRequest, SessionStatus, Skill, Invitation, Location, Message } from './types';
+import { db, supabase } from './services/db';
 import Header from './components/Header';
 import Home from './components/Home';
 import Profile from './components/Profile';
@@ -8,6 +8,7 @@ import Sessions from './components/Sessions';
 import Requests from './components/Requests';
 import Invitations from './components/Invitations';
 import Login from './components/Login';
+import Chat from './components/Chat';
 
 const App: React.FC = () => {
   const [loading, setLoading] = useState(true);
@@ -16,7 +17,9 @@ const App: React.FC = () => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [sessions, setSessions] = useState<SessionRequest[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
-  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'requests' | 'invitations'>('home');
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentView, setCurrentView] = useState<'home' | 'profile' | 'sessions' | 'requests' | 'invitations' | 'chat'>('home');
+  const [selectedChatUserId, setSelectedChatUserId] = useState<string | null>(null);
   const [userLocation, setUserLocation] = useState<Location | null>(null);
 
   const refreshState = useCallback(async (isInitial = false) => {
@@ -26,6 +29,7 @@ const App: React.FC = () => {
       setUsers(state.users);
       setSessions(state.sessions);
       setInvitations(state.invitations);
+      setMessages(state.messages);
 
       const savedUserId = localStorage.getItem('ts_currentUser_id');
       if (savedUserId) {
@@ -43,13 +47,83 @@ const App: React.FC = () => {
   useEffect(() => {
     refreshState(true);
 
+    // Real-time messages subscription
+    const messageSub = db.supabase
+      .channel('public:messages')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, (payload) => {
+        const newMessage = payload.new as any;
+        setMessages(prev => {
+            // Avoid duplicates
+            if (prev.some(m => m.id === String(newMessage.id))) return prev;
+            return [...prev, {
+                id: String(newMessage.id),
+                senderId: String(newMessage.sender_id),
+                receiverId: String(newMessage.receiver_id),
+                text: String(newMessage.text),
+                timestamp: new Date(newMessage.timestamp).getTime(),
+                read: Boolean(newMessage.read)
+            }];
+        });
+      })
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
+        const deletedId = String(payload.old.id);
+        setMessages(prev => prev.filter(m => m.id !== deletedId));
+      })
+      .subscribe();
+
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
         (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
         (err) => console.warn("Location access denied")
       );
     }
+
+    return () => {
+      supabase.removeChannel(messageSub);
+    };
   }, [refreshState]);
+
+  const handleSendMessage = async (receiverId: string, text: string) => {
+    if (!currentUser) return;
+    try {
+        const msg = await db.sendMessage(currentUser.id, receiverId, text);
+        setMessages(prev => [...prev, msg]);
+    } catch (e: any) {
+        console.error("Failed to send message", e);
+        alert(`Message failed to send: ${e.message || 'Check if the "messages" table exists in your DB.'}`);
+    }
+  };
+
+  const handleDeleteMessage = async (messageId: string) => {
+    try {
+      await db.deleteMessage(messageId);
+      setMessages(prev => prev.filter(m => m.id !== messageId));
+    } catch (e) {
+      console.error("Failed to delete message", e);
+      alert("Failed to delete message.");
+    }
+  };
+
+  const handleDeleteChat = async (userId: string) => {
+    if (!currentUser) return;
+    if (!confirm("Are you sure you want to delete this entire chat? This cannot be undone.")) return;
+
+    try {
+      await db.deleteChat(currentUser.id, userId);
+      setMessages(prev => prev.filter(m =>
+        !(m.senderId === currentUser.id && m.receiverId === userId) &&
+        !(m.senderId === userId && m.receiverId === currentUser.id)
+      ));
+    } catch (e) {
+      console.error("Failed to delete chat", e);
+      alert("Failed to delete chat.");
+    }
+  };
+
+  const openChat = (userId: string) => {
+    setSelectedChatUserId(userId);
+    setCurrentView('chat');
+  };
 
   const handleLogin = (user: User) => {
       localStorage.setItem('ts_currentUser_id', user.id);
@@ -165,7 +239,7 @@ const App: React.FC = () => {
   const renderView = () => {
     switch (currentView) {
       case 'home':
-        return <Home users={users} currentUser={currentUser} onRequestSession={handleRequestSession} userLocation={userLocation} />;
+        return <Home users={users} currentUser={currentUser} onRequestSession={handleRequestSession} userLocation={userLocation} onOpenChat={openChat} />;
       case 'profile':
         return <Profile user={currentUser} onUpdate={handleUpdateProfile} onLogout={handleLogout} />;
       case 'sessions':
@@ -174,10 +248,23 @@ const App: React.FC = () => {
         return <Requests sessions={sessions} currentUser={currentUser} users={users} onUpdateSession={handleUpdateSession} />;
       case 'invitations':
         return <Invitations invitations={invitations} onInvite={handleInviteUser} onCancel={handleCancelInvite} isAdmin={currentUser.isAdmin} currentUser={currentUser} />;
+      case 'chat':
+        return (
+          <Chat
+            currentUser={currentUser}
+            users={users}
+            allMessages={messages}
+            onSendMessage={handleSendMessage}
+            onDeleteMessage={handleDeleteMessage}
+            onDeleteChat={handleDeleteChat}
+            initialRecipientId={selectedChatUserId}
+          />
+        );
     }
   };
 
   const pendingRequestsCount = sessions.filter(s => s.providerId === currentUser.id && s.status === SessionStatus.PENDING).length;
+  const unreadMessagesCount = messages.filter(m => m.receiverId === currentUser.id && !m.read).length;
 
   return (
     <div className="max-w-screen-xl mx-auto pb-24 md:pb-0">
@@ -187,6 +274,7 @@ const App: React.FC = () => {
         setView={setCurrentView}
         onLogout={handleLogout}
         pendingCount={pendingRequestsCount}
+        unreadMessagesCount={unreadMessagesCount}
       />
 
       {backgroundLoading && (
@@ -215,6 +303,14 @@ const App: React.FC = () => {
         </button>
         <button onClick={() => setCurrentView('sessions')} className={`p-3.5 rounded-2xl transition ${currentView === 'sessions' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
             <i className="fa-solid fa-calendar-days text-lg"></i>
+        </button>
+        <button onClick={() => setCurrentView('chat')} className={`p-3.5 rounded-2xl transition relative ${currentView === 'chat' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
+            <i className="fa-solid fa-message text-lg"></i>
+            {unreadMessagesCount > 0 && (
+                <span className="absolute top-2 right-2 w-4 h-4 bg-indigo-600 rounded-full text-[10px] flex items-center justify-center font-bold text-white border-2 border-slate-900">
+                    {unreadMessagesCount}
+                </span>
+            )}
         </button>
         <button onClick={() => setCurrentView('invitations')} className={`p-3.5 rounded-2xl transition ${currentView === 'invitations' ? 'bg-indigo-600 shadow-lg shadow-indigo-500/20' : 'hover:bg-white/10 text-slate-400'}`}>
             <i className="fa-solid fa-paper-plane text-lg"></i>

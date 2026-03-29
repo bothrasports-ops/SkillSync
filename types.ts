@@ -24,6 +24,7 @@ export interface User {
   name: string;
   email: string;
   phone: string;
+  password?: string; // Added for permanent authentication
   bio: string;
   skills: Skill[];
   balanceHours: number;
@@ -33,6 +34,7 @@ export interface User {
   isAdmin: boolean;
   avatar: string;
   isInvited: boolean;
+  isPhoneVerified: boolean;
 }
 
 export interface SessionRequest {
@@ -44,7 +46,7 @@ export interface SessionRequest {
   durationHours: number;
   status: SessionStatus;
   timestamp: number;
-  scheduledAt?: number; // timestamp for the agreed meeting time
+  scheduledAt?: number;
   rating?: number;
   review?: string;
 }
@@ -52,9 +54,25 @@ export interface SessionRequest {
 export interface Invitation {
   id: string;
   emailOrPhone: string;
-  invitedBy: string; // Now stores the email of the inviter
+  invitedBy: string;
   timestamp: number;
   status: 'pending' | 'accepted' | 'cancelled';
+}
+
+export interface Message {
+  id: string;
+  senderId: string;
+  receiverId: string;
+  text: string;
+  timestamp: number;
+  read: boolean;
+}
+
+export interface ChatRoom {
+  id: string;
+  participants: User[];
+  lastMessage?: Message;
+  unreadCount: number;
 }
 
 export interface AppState {
@@ -62,4 +80,5 @@ export interface AppState {
   users: User[];
   sessions: SessionRequest[];
   invitations: Invitation[];
+  messages: Message[];
 }
