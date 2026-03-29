@@ -61,9 +61,24 @@ const App: React.FC = () => {
                 receiverId: String(newMessage.receiver_id),
                 text: String(newMessage.text),
                 timestamp: new Date(newMessage.timestamp).getTime(),
-                read: Boolean(newMessage.read)
+                read: Boolean(newMessage.read),
+                deletedBySender: Boolean(newMessage.deleted_by_sender),
+                deletedByReceiver: Boolean(newMessage.deleted_by_receiver)
             }];
         });
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'messages' }, (payload) => {
+        const updatedMessage = payload.new as any;
+        setMessages(prev => prev.map(m => m.id === String(updatedMessage.id) ? {
+            id: String(updatedMessage.id),
+            senderId: String(updatedMessage.sender_id),
+            receiverId: String(updatedMessage.receiver_id),
+            text: String(updatedMessage.text),
+            timestamp: new Date(updatedMessage.timestamp).getTime(),
+            read: Boolean(updatedMessage.read),
+            deletedBySender: Boolean(updatedMessage.deleted_by_sender),
+            deletedByReceiver: Boolean(updatedMessage.deleted_by_receiver)
+        } : m));
       })
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, (payload) => {
         const deletedId = String(payload.old.id);
@@ -95,9 +110,17 @@ const App: React.FC = () => {
   };
 
   const handleDeleteMessage = async (messageId: string) => {
+    if (!currentUser) return;
     try {
-      await db.deleteMessage(messageId);
-      setMessages(prev => prev.filter(m => m.id !== messageId));
+      await db.deleteMessage(messageId, currentUser.id);
+      setMessages(prev => prev.map(m => {
+        if (m.id !== messageId) return m;
+        return {
+          ...m,
+          deletedBySender: m.senderId === currentUser.id ? true : m.deletedBySender,
+          deletedByReceiver: m.receiverId === currentUser.id ? true : m.deletedByReceiver
+        };
+      }));
     } catch (e) {
       console.error("Failed to delete message", e);
       alert("Failed to delete message.");
@@ -106,14 +129,21 @@ const App: React.FC = () => {
 
   const handleDeleteChat = async (userId: string) => {
     if (!currentUser) return;
-    if (!confirm("Are you sure you want to delete this entire chat? This cannot be undone.")) return;
+    if (!confirm("Are you sure you want to delete this entire chat for you? The other person will still see the messages.")) return;
 
     try {
       await db.deleteChat(currentUser.id, userId);
-      setMessages(prev => prev.filter(m =>
-        !(m.senderId === currentUser.id && m.receiverId === userId) &&
-        !(m.senderId === userId && m.receiverId === currentUser.id)
-      ));
+      setMessages(prev => prev.map(m => {
+        const isRelevant = (m.senderId === currentUser.id && m.receiverId === userId) ||
+                          (m.senderId === userId && m.receiverId === currentUser.id);
+        if (!isRelevant) return m;
+
+        return {
+          ...m,
+          deletedBySender: m.senderId === currentUser.id ? true : m.deletedBySender,
+          deletedByReceiver: m.receiverId === currentUser.id ? true : m.deletedByReceiver
+        };
+      }));
     } catch (e) {
       console.error("Failed to delete chat", e);
       alert("Failed to delete chat.");
@@ -264,7 +294,11 @@ const App: React.FC = () => {
   };
 
   const pendingRequestsCount = sessions.filter(s => s.providerId === currentUser.id && s.status === SessionStatus.PENDING).length;
-  const unreadMessagesCount = messages.filter(m => m.receiverId === currentUser.id && !m.read).length;
+  const unreadMessagesCount = messages.filter(m =>
+    m.receiverId === currentUser.id &&
+    !m.read &&
+    !m.deletedByReceiver
+  ).length;
 
   return (
     <div className="max-w-screen-xl mx-auto pb-24 md:pb-0">

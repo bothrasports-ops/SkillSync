@@ -34,7 +34,9 @@ export const db = {
       receiverId: String(m.receiver_id),
       text: String(m.text),
       timestamp: new Date(m.timestamp).getTime(),
-      read: Boolean(m.read)
+      read: Boolean(m.read),
+      deletedBySender: Boolean(m.deleted_by_sender),
+      deletedByReceiver: Boolean(m.deleted_by_receiver)
     }));
 
     return { currentUser: null, users, sessions, invitations, messages };
@@ -259,7 +261,9 @@ export const db = {
       receiverId: String(data.receiver_id),
       text: String(data.text),
       timestamp: new Date(data.timestamp).getTime(),
-      read: Boolean(data.read)
+      read: Boolean(data.read),
+      deletedBySender: Boolean(data.deleted_by_sender),
+      deletedByReceiver: Boolean(data.deleted_by_receiver)
     };
   },
 
@@ -267,15 +271,32 @@ export const db = {
     await supabase.from('messages').update({ read: true }).eq('id', messageId);
   },
 
-  async deleteMessage(messageId: string): Promise<void> {
-    const { error } = await supabase.from('messages').delete().eq('id', messageId);
+  async deleteMessage(messageId: string, userId: string): Promise<void> {
+    const { data: msg } = await supabase.from('messages').select('*').eq('id', messageId).single();
+    if (!msg) return;
+
+    const updates: any = {};
+    if (String(msg.sender_id) === userId) updates.deleted_by_sender = true;
+    if (String(msg.receiver_id) === userId) updates.deleted_by_receiver = true;
+
+    const { error } = await supabase.from('messages').update(updates).eq('id', messageId);
     if (error) throw error;
   },
 
-  async deleteChat(userId1: string, userId2: string): Promise<void> {
-    const { error } = await supabase.from('messages')
-      .delete()
-      .or(`and(sender_id.eq.${userId1},receiver_id.eq.${userId2}),and(sender_id.eq.${userId2},receiver_id.eq.${userId1})`);
-    if (error) throw error;
+  async deleteChat(currentUserId: string, otherUserId: string): Promise<void> {
+    // Update messages where currentUser is sender
+    const { error: e1 } = await supabase.from('messages')
+      .update({ deleted_by_sender: true })
+      .eq('sender_id', currentUserId)
+      .eq('receiver_id', otherUserId);
+
+    // Update messages where currentUser is receiver
+    const { error: e2 } = await supabase.from('messages')
+      .update({ deleted_by_receiver: true })
+      .eq('sender_id', otherUserId)
+      .eq('receiver_id', currentUserId);
+
+    if (e1) throw e1;
+    if (e2) throw e2;
   }
 };

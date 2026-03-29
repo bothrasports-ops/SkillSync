@@ -42,11 +42,11 @@ const Chat: React.FC<ChatProps> = ({
     .filter(u => u.id !== currentUser.id)
     .map(user => {
       const roomMessages = allMessages.filter(m =>
-        (m.senderId === currentUser.id && m.receiverId === user.id) ||
-        (m.senderId === user.id && m.receiverId === currentUser.id)
+        ((m.senderId === currentUser.id && m.receiverId === user.id && !m.deletedBySender) ||
+         (m.senderId === user.id && m.receiverId === currentUser.id && !m.deletedByReceiver))
       );
       const lastMessage = roomMessages[roomMessages.length - 1];
-      const unreadCount = roomMessages.filter(m => m.receiverId === currentUser.id && !m.read).length;
+      const unreadCount = roomMessages.filter(m => m.receiverId === currentUser.id && !m.read && !m.deletedByReceiver).length;
 
       return {
         id: user.id,
@@ -60,8 +60,8 @@ const Chat: React.FC<ChatProps> = ({
 
   const activeMessages = selectedUser
     ? allMessages.filter(m =>
-        (m.senderId === currentUser.id && m.receiverId === selectedUser.id) ||
-        (m.senderId === selectedUser.id && m.receiverId === currentUser.id)
+        ((m.senderId === currentUser.id && m.receiverId === selectedUser.id && !m.deletedBySender) ||
+         (m.senderId === selectedUser.id && m.receiverId === currentUser.id && !m.deletedByReceiver))
       )
     : [];
 

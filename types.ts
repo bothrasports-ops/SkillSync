@@ -66,6 +66,8 @@ export interface Message {
   text: string;
   timestamp: number;
   read: boolean;
+  deletedBySender: boolean;
+  deletedByReceiver: boolean;
 }
 
 export interface ChatRoom {
