@@ -262,6 +262,32 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
         </div>
 
         <div className="space-y-10">
+            {/* Identity Details Section */}
+            {isEditing && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 p-8 bg-slate-50 rounded-[2rem] border border-slate-100">
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Email Address</label>
+                        <input
+                            type="email"
+                            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                            value={formData.email}
+                            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                            placeholder="your@email.com"
+                        />
+                    </div>
+                    <div className="space-y-2">
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Phone Number</label>
+                        <input
+                            type="tel"
+                            className="w-full bg-white border border-slate-200 rounded-2xl px-6 py-4 text-sm font-bold focus:border-indigo-500 outline-none transition-all"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            placeholder="+1234567890"
+                        />
+                    </div>
+                </div>
+            )}
+
             {/* Bio Section */}
             <div className="space-y-4">
                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] ml-1">My Narrative</label>
@@ -329,13 +355,14 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                                                 ))}
                                                 <option value="Custom Skill">-- Custom Skill --</option>
                                             </select>
-                                            {skill.name === 'Custom Skill' && (
+                                            {skill.name === 'Custom Skill' || !PREDEFINED_SKILLS[skill.category]?.includes(skill.name) ? (
                                                 <input
                                                     className="w-full mt-2 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-bold focus:bg-white focus:border-indigo-500 outline-none transition-all"
                                                     placeholder="Type your custom skill name..."
+                                                    value={skill.name === 'Custom Skill' ? '' : skill.name}
                                                     onChange={(e) => updateSkill(skill.id, 'name', e.target.value)}
                                                 />
-                                            )}
+                                            ) : null}
                                         </div>
                                         <button onClick={() => removeSkill(skill.id)} className="mt-8 text-red-300 hover:text-red-500 transition-colors p-2">
                                             <i className="fa-solid fa-circle-xmark text-2xl"></i>
