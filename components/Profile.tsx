@@ -1,5 +1,5 @@
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { User, Skill } from '../types';
 import { CATEGORIES, PREDEFINED_SKILLS } from '../constants';
 import { getSkillSuggestion } from '../services/geminiService';
@@ -18,6 +18,13 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
   const [isVerifying, setIsVerifying] = useState(false);
   const [otpValue, setOtpValue] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Sync formData with user when not editing
+  useEffect(() => {
+    if (!isEditing) {
+      setFormData(user);
+    }
+  }, [user, isEditing]);
 
   const handleSuggestSkills = async () => {
       if (!formData.bio) return;
@@ -63,11 +70,7 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
   const updateSkill = (id: string, field: keyof Skill, value: string) => {
     const updated = (formData.skills || []).map(s => {
       if (s.id === id) {
-        const updatedSkill = { ...s, [field]: value };
-        if (field === 'category') {
-            updatedSkill.name = PREDEFINED_SKILLS[value]?.[0] || 'Custom Skill';
-        }
-        return updatedSkill;
+        return { ...s, [field]: value };
       }
       return s;
     });
@@ -253,12 +256,33 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                 <i className="fa-solid fa-id-card text-indigo-500"></i>
                 Profile Identity
             </h3>
-            {!isEditing && (
-                <button onClick={() => setIsEditing(true)} className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-sm font-black hover:bg-slate-800 transition shadow-lg active:scale-95">
-                    <i className="fa-solid fa-user-pen mr-2"></i>
-                    Edit Profile
-                </button>
-            )}
+            <div className="flex gap-3">
+                {isEditing ? (
+                    <>
+                        <button
+                            onClick={() => { setFormData(user); setIsEditing(false); }}
+                            className="px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-xs font-black hover:bg-slate-200 transition active:scale-95"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            onClick={handleSave}
+                            className="px-6 py-3 bg-indigo-600 text-white rounded-2xl text-sm font-black hover:bg-indigo-700 transition shadow-lg active:scale-95 flex items-center gap-2"
+                        >
+                            <i className="fa-solid fa-check"></i>
+                            Save Changes
+                        </button>
+                    </>
+                ) : (
+                    <button
+                        onClick={() => { setFormData(user); setIsEditing(true); }}
+                        className="px-6 py-3 bg-slate-900 text-white rounded-2xl text-sm font-black hover:bg-slate-800 transition shadow-lg active:scale-95"
+                    >
+                        <i className="fa-solid fa-user-pen mr-2"></i>
+                        Edit Profile
+                    </button>
+                )}
+            </div>
         </div>
 
         <div className="space-y-10">
@@ -331,9 +355,9 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                     {(isEditing ? formData.skills : user.skills)?.map((skill) => (
                         <div key={skill.id} className={`p-8 rounded-[2rem] border transition-all ${isEditing ? 'bg-white border-slate-200 shadow-md' : 'bg-slate-50 border-slate-100'}`}>
                             {isEditing ? (
-                                <div className="space-y-6">
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div className="w-full md:w-1/3 space-y-2">
+                                <div className="space-y-4">
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div className="space-y-1">
                                             <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</label>
                                             <select
                                                 className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-bold focus:bg-white focus:border-indigo-500 outline-none transition-all cursor-pointer"
@@ -343,32 +367,17 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                                                 {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
                                             </select>
                                         </div>
-                                        <div className="flex-1 space-y-2">
-                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Skill Selection</label>
-                                            <select
-                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-bold focus:bg-white focus:border-indigo-500 outline-none transition-all cursor-pointer"
+                                        <div className="space-y-1">
+                                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Skill Name</label>
+                                            <input
+                                                className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-bold focus:bg-white focus:border-indigo-500 outline-none transition-all"
                                                 value={skill.name}
                                                 onChange={(e) => updateSkill(skill.id, 'name', e.target.value)}
-                                            >
-                                                {PREDEFINED_SKILLS[skill.category]?.map(s => (
-                                                    <option key={s} value={s}>{s}</option>
-                                                ))}
-                                                <option value="Custom Skill">-- Custom Skill --</option>
-                                            </select>
-                                            {skill.name === 'Custom Skill' || !PREDEFINED_SKILLS[skill.category]?.includes(skill.name) ? (
-                                                <input
-                                                    className="w-full mt-2 bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-bold focus:bg-white focus:border-indigo-500 outline-none transition-all"
-                                                    placeholder="Type your custom skill name..."
-                                                    value={skill.name === 'Custom Skill' ? '' : skill.name}
-                                                    onChange={(e) => updateSkill(skill.id, 'name', e.target.value)}
-                                                />
-                                            ) : null}
+                                                placeholder="e.g. Graphic Design"
+                                            />
                                         </div>
-                                        <button onClick={() => removeSkill(skill.id)} className="mt-8 text-red-300 hover:text-red-500 transition-colors p-2">
-                                            <i className="fa-solid fa-circle-xmark text-2xl"></i>
-                                        </button>
                                     </div>
-                                    <div className="space-y-2">
+                                    <div className="space-y-1">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Session Description</label>
                                         <textarea
                                             className="w-full bg-slate-50 border border-slate-100 rounded-2xl px-6 py-3 text-sm font-medium focus:bg-white focus:border-indigo-500 outline-none transition-all"
@@ -377,6 +386,11 @@ const Profile: React.FC<ProfileProps> = ({ user, onUpdate, onLogout }) => {
                                             rows={2}
                                             placeholder="What will community members learn in a session with you?"
                                         />
+                                    </div>
+                                    <div className="flex justify-end">
+                                        <button onClick={() => removeSkill(skill.id)} className="text-red-500 text-xs font-bold flex items-center gap-1 hover:underline">
+                                            <i className="fa-solid fa-trash-can"></i> Remove Skill
+                                        </button>
                                     </div>
                                 </div>
                             ) : (
